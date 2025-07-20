@@ -399,15 +399,15 @@ const ScrutinyManagement: React.FC = () => {
                         <MessageSquare size={16} />
                       </button>
                       {/* Show comment count if there are comments for this row */}
-                      {getFieldComments(`${block.id}_${rowIndex}`).length > 0 && (
+                      {fieldComments.length > 0 && (
                         <div className="flex items-center space-x-1">
                           <button
-                            onClick={() => toggleCommentsCollapse(`${block.id}_${rowIndex}`)}
+                            onClick={() => toggleCommentsCollapse(field.id)}
                             className="text-orange-600 hover:text-orange-800 p-1 rounded flex items-center space-x-1"
                             title="Toggle Comments"
                           >
-                            <span className="text-xs">{getFieldComments(`${block.id}_${rowIndex}`).length}</span>
-                            {isCommentsCollapsed(`${block.id}_${rowIndex}`) ? (
+                            <span className="text-xs">{fieldComments.length}</span>
+                            {isCommentsCollapsed(field.id) ? (
                               <ChevronDown size={12} />
                             ) : (
                               <ChevronUp size={12} />
@@ -638,33 +638,6 @@ const ScrutinyManagement: React.FC = () => {
                       Actions
                     </th>
                   </tr>
-                  {/* Row Comments Display */}
-                  {getFieldComments(`${block.id}_${rowIndex}`).length > 0 && !isCommentsCollapsed(`${block.id}_${rowIndex}`) && (
-                    <tr>
-                      <td colSpan={block.gridColumns?.length ? block.gridColumns.length + 1 : 1} className="px-4 py-2 border border-gray-300 bg-orange-50">
-                        <div className="space-y-2">
-                          <h6 className="text-sm font-medium text-orange-800">Comments for Row {rowIndex + 1}:</h6>
-                          {getFieldComments(`${block.id}_${rowIndex}`).map((comment) => (
-                            <div key={comment.id} className="bg-white border border-orange-200 rounded p-3">
-                              <div className="flex justify-between items-start">
-                                <div className="flex-1">
-                                  <p className="text-sm text-orange-800">{comment.comment}</p>
-                                  <p className="text-xs text-orange-600 mt-1">
-                                    {comment.scrutinizer} • {comment.timestamp}
-                                  </p>
-                                </div>
-                                {!comment.resolved && (
-                                  <span className="px-2 py-1 bg-orange-100 text-orange-800 text-xs rounded-full">
-                                    Pending
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </td>
-                    </tr>
-                  )}
                 </thead>
                 <tbody>
                   {comments.map((comment) => {
