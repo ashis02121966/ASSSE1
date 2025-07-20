@@ -200,6 +200,7 @@ const ScrutinyManagement: React.FC = () => {
   const handleAddComment = (fieldId: string) => {
     if (!newComment.trim()) return;
     
+    const surveyBlocks = getSurveyBlocks();
     const comment: ScrutinyComment = {
       id: Date.now().toString(),
       blockId: surveyBlocks[currentBlock].id,
