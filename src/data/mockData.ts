@@ -11,7 +11,8 @@ export const userRoles: UserRole[] = [
   { id: 'sso-user', name: 'SSO User', code: 'SSO_USER', permissions: ['survey.compile', 'survey.scrutinize', 'scrutiny.level1'], level: 7, isAdmin: false, isScrutinizer: true },
   { id: 'jso-user', name: 'JSO User (Compiler)', code: 'JSO_USER', permissions: ['survey.compile', 'survey.fill'], level: 8, isAdmin: false, isScrutinizer: false },
   { id: 'scrutinizer', name: 'Scrutinizer', code: 'SCRUTINIZER', permissions: ['survey.scrutinize', 'scrutiny.level1'], level: 8, isAdmin: false, isScrutinizer: true },
-  { id: 'enterprise', name: 'Enterprise User', code: 'ENTERPRISE', permissions: ['survey.fill'], level: 9, isAdmin: false, isScrutinizer: false }
+  { id: 'enterprise', name: 'Enterprise User', code: 'ENTERPRISE', permissions: ['survey.fill'], level: 9, isAdmin: false, isScrutinizer: false },
+  { id: 'compiler', name: 'Compiler', code: 'COMPILER', permissions: ['survey.compile', 'survey.fill'], level: 9, isAdmin: false, isScrutinizer: false }
 ];
 
 export const officeTypes: OfficeType[] = [
