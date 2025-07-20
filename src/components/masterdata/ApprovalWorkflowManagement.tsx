@@ -374,7 +374,7 @@ const ApprovalWorkflowManagement: React.FC = () => {
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                       >
                         <option value="">Select Role</option>
-                        {userRoles.filter(r => r.isScrutinizer || r.isAdmin).map((role) => (
+                        {userRoles.filter(r => r.isScrutinizer || r.isAdmin || r.code === 'COMPILER' || r.code === 'JSO_USER').map((role) => (
                           <option key={role.id} value={role.code}>
                             {role.name} (Level {role.level})
                           </option>
