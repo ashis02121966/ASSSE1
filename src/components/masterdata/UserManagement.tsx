@@ -667,13 +667,13 @@ const UserManagement: React.FC = () => {
             <div className="space-y-4">
               <div className="flex items-center space-x-4">
                 <img
-                  src={selectedUser.profileImage || `https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&dpr=1`}
-                  alt={selectedUser.name}
+                  src={selectedUser?.profileImage || `https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&dpr=1`}
+                  alt={selectedUser?.name}
                   className="h-16 w-16 rounded-full object-cover"
                 />
                 <div>
-                  <h4 className="text-lg font-medium text-gray-900">{selectedUser.name}</h4>
-                  <p className="text-sm text-gray-500">{selectedUser.email}</p>
+                  <h4 className="text-lg font-medium text-gray-900">{selectedUser?.name}</h4>
+                  <p className="text-sm text-gray-500">{selectedUser?.email}</p>
                 </div>
               </div>
               
@@ -682,7 +682,7 @@ const UserManagement: React.FC = () => {
                   Assigned Roles
                 </label>
                 <div className="flex flex-wrap gap-2">
-                  {selectedUser.roles.map((role, index) => (
+                  {selectedUser?.roles.map((role, index) => (
                     <span
                       key={index}
                       className="px-3 py-1 bg-blue-100 text-blue-800 text-sm rounded-full"
@@ -698,13 +698,13 @@ const UserManagement: React.FC = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Status
                   </label>
-                  {getStatusBadge(selectedUser.status)}
+                  {getStatusBadge(selectedUser?.status || 'Active')}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Last Login
                   </label>
-                  <p className="text-sm text-gray-900">{selectedUser.lastLogin}</p>
+                  <p className="text-sm text-gray-900">{selectedUser?.lastLogin}</p>
                 </div>
               </div>
             </div>
@@ -712,12 +712,12 @@ const UserManagement: React.FC = () => {
             <div className="mt-6 flex justify-end">
               <button
                 onClick={() => {
-                  setShowViewModal(false);
+                <p className="text-sm text-gray-900 p-2 bg-gray-50 rounded">{selectedUser?.officeType || 'Not Set'}</p>
                   setSelectedUser(null);
                 }}
                 className="px-4 py-2 bg-gray-600 text-white rounded-md text-sm font-medium hover:bg-gray-700"
               >
-                Close
+                <p className="text-sm text-gray-900 p-2 bg-gray-50 rounded">{selectedUser?.officeLocation || 'Not Set'}</p>
               </button>
             </div>
           </div>
