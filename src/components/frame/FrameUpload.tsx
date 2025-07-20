@@ -14,6 +14,8 @@ const FrameUpload: React.FC = () => {
   const [validationResults, setValidationResults] = useState<ValidationResult[]>([]);
   const [showValidationModal, setShowValidationModal] = useState(false);
   const [currentValidation, setCurrentValidation] = useState<ValidationResult | null>(null);
+  const [showViewModal, setShowViewModal] = useState(false);
+  const [selectedFrame, setSelectedFrame] = useState<Frame | null>(null);
 
   interface ValidationError {
     row: number;
@@ -343,6 +345,11 @@ const FrameUpload: React.FC = () => {
     return rows.join('\n');
   };
 
+  const handleViewFrame = (frame: Frame) => {
+    setSelectedFrame(frame);
+    setShowViewModal(true);
+  };
+
   const filteredFrames = frames.filter(frame => {
     const matchesSearch = frame.fileName.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          frame.sector.toLowerCase().includes(searchTerm.toLowerCase());
@@ -558,7 +565,7 @@ const FrameUpload: React.FC = () => {
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     <div className="flex items-center space-x-2">
                       <button 
-                        onClick={() => alert(`Viewing details for ${frame.fileName}`)}
+                        onClick={() => handleViewFrame(frame)}
                         className="text-blue-600 hover:text-blue-800 p-1 rounded"
                         title="View Details"
                       >
@@ -776,6 +783,137 @@ const FrameUpload: React.FC = () => {
                   </button>
                 )}
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* View Frame Modal */}
+      {showViewModal && selectedFrame && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">Frame Details</h3>
+              <button 
+                onClick={() => setShowViewModal(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                ✕
+              </button>
+            </div>
+            
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    File Name
+                  </label>
+                  <p className="text-sm text-gray-900 p-2 bg-gray-50 rounded">{selectedFrame.fileName}</p>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    DSL Number
+                  </label>
+                  <p className="text-sm text-gray-900 p-2 bg-gray-50 rounded font-mono">{selectedFrame.dslNumber || 'Not Set'}</p>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Sector
+                  </label>
+                  <p className="text-sm text-gray-900 p-2 bg-gray-50 rounded">{selectedFrame.sector}</p>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Number of Enterprises
+                  </label>
+                  <p className="text-sm text-gray-900 p-2 bg-gray-50 rounded">{selectedFrame.enterprises.toLocaleString()}</p>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Upload Date
+                  </label>
+                  <p className="text-sm text-gray-900 p-2 bg-gray-50 rounded">{selectedFrame.uploadDate}</p>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Status
+                  </label>
+                  <div className="p-2">{getStatusBadge(selectedFrame.status)}</div>
+                </div>
+              </div>
+              
+              {selectedFrame.allocatedTo && selectedFrame.allocatedTo.length > 0 && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Allocated To
+                  </label>
+                  <div className="p-2 bg-gray-50 rounded">
+                    <div className="flex flex-wrap gap-2">
+                      {selectedFrame.allocatedTo.map((userId, index) => (
+                        <span key={index} className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
+                          User {userId}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+              {/* Frame Statistics */}
+              <div className="border-t border-gray-200 pt-4">
+                <h4 className="text-sm font-medium text-gray-900 mb-3">Frame Statistics</h4>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-blue-50 p-3 rounded">
+                    <div className="text-lg font-semibold text-blue-600">{selectedFrame.enterprises.toLocaleString()}</div>
+                    <div className="text-sm text-blue-700">Total Enterprises</div>
+                  </div>
+                  <div className="bg-green-50 p-3 rounded">
+                    <div className="text-lg font-semibold text-green-600">
+                      {selectedFrame.status === 'completed' ? '100%' : 
+                       selectedFrame.status === 'allocated' ? '50%' : '0%'}
+                    </div>
+                    <div className="text-sm text-green-700">Progress</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div className="mt-6 flex justify-end space-x-3">
+              <button
+                onClick={() => setShowViewModal(false)}
+                className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
+              >
+                Close
+              </button>
+              <button
+                onClick={() => {
+                  // Generate proper Excel-compatible CSV content
+                  const csvHeader = 'CSOID,StateCode,SROCode,DistrictCode,DistrictName,Sector,PslNo,FrameNIC,Scheme,New Scheme,RegistrationNo,CompanyName,CompanyAddress,CompanyPlace,companyPincode,PSU,NoOfEmployees,JointReturnCode,DSLNo,IsSelected,SubSampleNo,App_SurveyYear,App_MotherUnit,PINCode,Description,EmailId,IsPrevYearSelected,ITUse,RU,App_AddEditFlg,remarks,StatusCode\n';
+                  const sampleRows = [
+                    '001,27,001,001,Mumbai,2,12345,25111,ASI,ASI2024,REG001,"ABC Manufacturing Ltd.","123 Industrial Area, Mumbai","Mumbai",400001,0,150,0,DSL001,1,1,2024,0,400001,"Manufacturing of metal products","contact@abc.com",0,1,2,0,"Sample data",1',
+                    '001,27,001,002,Pune,2,12346,25112,ASI,ASI2024,REG002,"XYZ Industries Pvt Ltd","456 Tech Park, Pune","Pune",411001,0,200,0,DSL002,1,2,2024,0,411001,"Manufacturing of machinery","info@xyz.com",0,1,2,0,"Sample data",1'
+                  ].join('\n');
+                  
+                  const csvContent = '\uFEFF' + csvHeader + sampleRows; // Add BOM for Excel compatibility
+                  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8' });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = selectedFrame.fileName.replace(/\.[^/.]+$/, '') + '_sample.csv';
+                  document.body.appendChild(a);
+                  a.click();
+                  document.body.removeChild(a);
+                  URL.revokeObjectURL(url);
+                }}
+                className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700"
+              >
+                Download Frame
+              </button>
             </div>
           </div>
         </div>
