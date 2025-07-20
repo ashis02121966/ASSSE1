@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, Filter, Eye, MessageSquare, CheckCircle, AlertCircle, Clock, FileText, Send } from 'lucide-react';
+import { Search, Filter, Eye, MessageSquare, CheckCircle, AlertCircle, Clock, FileText, Send, Trash2 } from 'lucide-react';
 import { surveyBlocks as allSurveyBlocks } from '../../data/surveyBlocks';
 
 interface ScrutinySurvey {
@@ -214,6 +214,9 @@ const ScrutinyManagement: React.FC = () => {
     setComments([...comments, comment]);
     setNewComment('');
     setSelectedFieldForComment(null);
+    
+    // Show success message
+    alert('Comment added successfully!');
   };
 
   const handleViewSurvey = (survey: ScrutinySurvey) => {
@@ -524,7 +527,7 @@ const ScrutinyManagement: React.FC = () => {
         </div>
 
         {/* Navigation Buttons */}
-        <div className="flex justify-between items-center">
+        <div className="flex justify-between items-center mb-6">
           <button
             onClick={handlePreviousBlock}
             disabled={currentBlock === 0}
@@ -551,6 +554,130 @@ const ScrutinyManagement: React.FC = () => {
             )}
           </div>
         </div>
+
+        {/* Comments Summary Table */}
+        {comments.length > 0 && (
+          <div className="bg-white p-6 rounded-lg border border-gray-200">
+            <h4 className="font-medium text-gray-900 mb-4 flex items-center">
+              <MessageSquare className="h-5 w-5 mr-2 text-orange-600" />
+              Scrutiny Comments Summary ({comments.length} comments)
+            </h4>
+            <div className="overflow-x-auto">
+              <table className="w-full border border-gray-300">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-4 py-2 border border-gray-300 text-left text-sm font-medium text-gray-700">
+                      Block
+                    </th>
+                    <th className="px-4 py-2 border border-gray-300 text-left text-sm font-medium text-gray-700">
+                      Field/Item
+                    </th>
+                    <th className="px-4 py-2 border border-gray-300 text-left text-sm font-medium text-gray-700">
+                      Comment
+                    </th>
+                    <th className="px-4 py-2 border border-gray-300 text-left text-sm font-medium text-gray-700">
+                      Scrutinizer
+                    </th>
+                    <th className="px-4 py-2 border border-gray-300 text-left text-sm font-medium text-gray-700">
+                      Timestamp
+                    </th>
+                    <th className="px-4 py-2 border border-gray-300 text-left text-sm font-medium text-gray-700">
+                      Status
+                    </th>
+                    <th className="px-4 py-2 border border-gray-300 text-left text-sm font-medium text-gray-700">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {comments.map((comment) => {
+                    const block = getSurveyBlocks().find(b => b.id === comment.blockId);
+                    const field = block?.fields.find(f => f.id === comment.fieldId);
+                    return (
+                      <tr key={comment.id} className="hover:bg-gray-50">
+                        <td className="px-4 py-2 border border-gray-300">
+                          <div className="text-sm text-gray-900">{block?.name || 'Unknown Block'}</div>
+                        </td>
+                        <td className="px-4 py-2 border border-gray-300">
+                          <div className="text-sm text-gray-900">
+                            {field?.label || comment.fieldId}
+                          </div>
+                        </td>
+                        <td className="px-4 py-2 border border-gray-300">
+                          <div className="text-sm text-gray-900 max-w-xs">
+                            {comment.comment}
+                          </div>
+                        </td>
+                        <td className="px-4 py-2 border border-gray-300">
+                          <div className="text-sm text-gray-900">{comment.scrutinizer}</div>
+                        </td>
+                        <td className="px-4 py-2 border border-gray-300">
+                          <div className="text-sm text-gray-900">{comment.timestamp}</div>
+                        </td>
+                        <td className="px-4 py-2 border border-gray-300">
+                          <span className={`px-2 py-1 text-xs rounded-full ${
+                            comment.resolved 
+                              ? 'bg-green-100 text-green-800' 
+                              : 'bg-orange-100 text-orange-800'
+                          }`}>
+                            {comment.resolved ? 'Resolved' : 'Pending'}
+                          </span>
+                        </td>
+                        <td className="px-4 py-2 border border-gray-300">
+                          <div className="flex items-center space-x-2">
+                            {!comment.resolved && (
+                              <button
+                                onClick={() => {
+                                  setComments(comments.map(c => 
+                                    c.id === comment.id ? { ...c, resolved: true } : c
+                                  ));
+                                }}
+                                className="text-green-600 hover:text-green-800 p-1 rounded"
+                                title="Mark as Resolved"
+                              >
+                                <CheckCircle size={14} />
+                              </button>
+                            )}
+                            <button
+                              onClick={() => {
+                                if (confirm('Are you sure you want to delete this comment?')) {
+                                  setComments(comments.filter(c => c.id !== comment.id));
+                                }
+                              }}
+                              className="text-red-600 hover:text-red-800 p-1 rounded"
+                              title="Delete Comment"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+            
+            {/* Comments Summary Stats */}
+            <div className="mt-4 flex items-center justify-between text-sm text-gray-600">
+              <div className="flex items-center space-x-4">
+                <span>Total Comments: {comments.length}</span>
+                <span>Pending: {comments.filter(c => !c.resolved).length}</span>
+                <span>Resolved: {comments.filter(c => c.resolved).length}</span>
+              </div>
+              <button
+                onClick={() => {
+                  if (confirm('Are you sure you want to clear all resolved comments?')) {
+                    setComments(comments.filter(c => !c.resolved));
+                  }
+                }}
+                className="text-blue-600 hover:text-blue-800 text-sm"
+              >
+                Clear Resolved Comments
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     );
   };
