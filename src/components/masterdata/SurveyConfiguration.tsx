@@ -860,10 +860,10 @@ const SurveyConfiguration: React.FC = () => {
                   <p className="font-medium">Formula Examples:</p>
                   <ul className="list-disc list-inside space-y-1 mt-1">
                     <li><strong>Sum:</strong> SUM(male_employees, female_employees) = total_employees</li>
-                    <li><strong>Count:</strong> COUNT(product_lines) >= 1</li>
+                    <li><strong>Count:</strong> COUNT(product_lines) &gt;= 1</li>
                     <li><strong>Cross Block:</strong> block_7.total_receipts >= block_6.total_expenses</li>
                     <li><strong>Range:</strong> employee_count BETWEEN 1 AND 1000</li>
-                    <li><strong>Custom:</strong> IF(revenue > 1000000, tax_paid > 0, true)</li>
+                    <li><strong>Custom:</strong> IF(revenue &gt; 1000000, tax_paid &gt; 0, true)</li>
                   </ul>
                 </div>
               </div>
