@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Plus, Edit, Trash2, Search, Filter, Eye, Save, X, Check } from 'lucide-react';
-import { userRoles } from '../../data/mockData';
+import { userRoles, officeTypes } from '../../data/mockData';
 import { UserRole } from '../../types';
 
 const RoleManagement: React.FC = () => {
@@ -12,7 +12,10 @@ const RoleManagement: React.FC = () => {
     id: '',
     name: '',
     code: '',
-    permissions: []
+    permissions: [],
+    level: 1,
+    isAdmin: false,
+    isScrutinizer: false
   });
 
   const handleAddRole = () => {
@@ -96,6 +99,12 @@ const RoleManagement: React.FC = () => {
                   Role Code
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Level
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Type
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Permissions
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -111,6 +120,24 @@ const RoleManagement: React.FC = () => {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-gray-900">{role.code}</div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
+                      Level {role.level}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex space-x-1">
+                      {role.isAdmin && (
+                        <span className="px-2 py-1 bg-purple-100 text-purple-800 text-xs rounded-full">Admin</span>
+                      )}
+                      {role.isScrutinizer && (
+                        <span className="px-2 py-1 bg-orange-100 text-orange-800 text-xs rounded-full">Scrutinizer</span>
+                      )}
+                      {!role.isAdmin && !role.isScrutinizer && (
+                        <span className="px-2 py-1 bg-gray-100 text-gray-800 text-xs rounded-full">Regular</span>
+                      )}
+                    </div>
                   </td>
                   <td className="px-6 py-4">
                     <div className="text-sm text-gray-900">
@@ -193,6 +220,46 @@ const RoleManagement: React.FC = () => {
               
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Hierarchy Level (1 = Highest, 9 = Lowest)
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  max="9"
+                  value={newRole.level}
+                  onChange={(e) => setNewRole({...newRole, level: parseInt(e.target.value) || 1})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-700">
+                  Role Type
+                </label>
+                <div className="flex items-center space-x-4">
+                  <label className="flex items-center">
+                    <input
+                      type="checkbox"
+                      checked={newRole.isAdmin}
+                      onChange={(e) => setNewRole({...newRole, isAdmin: e.target.checked})}
+                      className="mr-2 rounded"
+                    />
+                    <span className="text-sm">Admin Role</span>
+                  </label>
+                  <label className="flex items-center">
+                    <input
+                      type="checkbox"
+                      checked={newRole.isScrutinizer}
+                      onChange={(e) => setNewRole({...newRole, isScrutinizer: e.target.checked})}
+                      className="mr-2 rounded"
+                    />
+                    <span className="text-sm">Scrutinizer Role</span>
+                  </label>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Permissions
                 </label>
                 <div className="space-y-2 max-h-40 overflow-y-auto p-2 border border-gray-300 rounded-md">
@@ -215,7 +282,7 @@ const RoleManagement: React.FC = () => {
                   
                   {!newRole.permissions.includes('*') && (
                     <>
-                      {['dashboard.view', 'frame.upload', 'frame.allocate', 'notice.generate', 'survey.compile', 'survey.scrutinize', 'data.download', 'reports.view'].map((perm) => (
+                      {['dashboard.view', 'frame.upload', 'frame.allocate', 'notice.generate', 'survey.compile', 'survey.scrutinize', 'scrutiny.level1', 'scrutiny.level2', 'data.download', 'reports.view', 'user.create'].map((perm) => (
                         <div key={perm} className="flex items-center">
                           <input
                             type="checkbox"
@@ -299,6 +366,46 @@ const RoleManagement: React.FC = () => {
               
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Hierarchy Level (1 = Highest, 9 = Lowest)
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  max="9"
+                  value={editingRole.level}
+                  onChange={(e) => setEditingRole({...editingRole, level: parseInt(e.target.value) || 1})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="block text-sm font-medium text-gray-700">
+                  Role Type
+                </label>
+                <div className="flex items-center space-x-4">
+                  <label className="flex items-center">
+                    <input
+                      type="checkbox"
+                      checked={editingRole.isAdmin}
+                      onChange={(e) => setEditingRole({...editingRole, isAdmin: e.target.checked})}
+                      className="mr-2 rounded"
+                    />
+                    <span className="text-sm">Admin Role</span>
+                  </label>
+                  <label className="flex items-center">
+                    <input
+                      type="checkbox"
+                      checked={editingRole.isScrutinizer}
+                      onChange={(e) => setEditingRole({...editingRole, isScrutinizer: e.target.checked})}
+                      className="mr-2 rounded"
+                    />
+                    <span className="text-sm">Scrutinizer Role</span>
+                  </label>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
                   Permissions
                 </label>
                 <div className="space-y-2 max-h-40 overflow-y-auto p-2 border border-gray-300 rounded-md">
@@ -321,7 +428,7 @@ const RoleManagement: React.FC = () => {
                   
                   {!editingRole.permissions.includes('*') && (
                     <>
-                      {['dashboard.view', 'frame.upload', 'frame.allocate', 'notice.generate', 'survey.compile', 'survey.scrutinize', 'data.download', 'reports.view'].map((perm) => (
+                      {['dashboard.view', 'frame.upload', 'frame.allocate', 'notice.generate', 'survey.compile', 'survey.scrutinize', 'scrutiny.level1', 'scrutiny.level2', 'data.download', 'reports.view', 'user.create'].map((perm) => (
                         <div key={perm} className="flex items-center">
                           <input
                             type="checkbox"

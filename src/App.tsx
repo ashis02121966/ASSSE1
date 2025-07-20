@@ -15,6 +15,7 @@ import UserManagement from './components/masterdata/UserManagement';
 import RoleManagement from './components/masterdata/RoleManagement';
 import RoleMenuAccess from './components/masterdata/RoleMenuAccess';
 import SurveyConfiguration from './components/masterdata/SurveyConfiguration';
+import ApprovalWorkflowManagement from './components/masterdata/ApprovalWorkflowManagement';
 import { Loader2 } from 'lucide-react';
 
 function App() {
@@ -64,6 +65,8 @@ function App() {
         return <RoleManagement />;
       case '/master-data/menu-access':
         return <RoleMenuAccess />;
+      case '/master-data/approval-workflow':
+        return <ApprovalWorkflowManagement />;
       default:
         return (
           <div className="bg-white p-8 rounded-lg shadow-sm border border-gray-200">

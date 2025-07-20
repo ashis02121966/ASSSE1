@@ -12,7 +12,39 @@ export interface UserRole {
   name: string;
   code: string;
   permissions: string[];
-  frames?: string[];
+  level: number; // Hierarchy level (1 = highest, 8 = lowest)
+  isAdmin: boolean;
+  isScrutinizer: boolean;
+}
+
+export interface OfficeType {
+  id: string;
+  name: string;
+  code: string;
+  description?: string;
+}
+
+export interface ApprovalWorkflow {
+  id: string;
+  name: string;
+  description?: string;
+  steps: ApprovalStep[];
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ApprovalStep {
+  id: string;
+  stepNumber: number;
+  name: string;
+  roleCode: string;
+  officeType?: string;
+  isRequired: boolean;
+  canReject: boolean;
+  canReferBack: boolean;
+  nextStepOnApproval?: string;
+  nextStepOnReject?: string;
 }
 
 export interface MenuItem {
@@ -137,6 +169,9 @@ export interface LoginCredentials {
   password: string;
 }
 
+  officeType?: OfficeType;
+  officeLocation?: string;
+  isActive: boolean;
 export interface Enterprise {
   id: string;
   name: string;

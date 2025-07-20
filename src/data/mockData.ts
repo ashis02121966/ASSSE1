@@ -2,15 +2,24 @@ import { User, MenuItem, Frame, UserRole } from '../types';
 import { surveyBlocks } from './surveyBlocks';
 
 export const userRoles: UserRole[] = [
-  { id: 'ensd-admin', name: 'EnSD Admin', code: 'ENSD_ADMIN', permissions: ['*'] },
-  { id: 'cpg-user', name: 'CPG User', code: 'CPG_USER', permissions: ['frame.allocate', 'dashboard.view'] },
-  { id: 'ensd-ad-dd', name: 'EnSD AD/DD User', code: 'ENSD_AD_DD', permissions: ['dashboard.view', 'reports.view'] },
-  { id: 'ds-user', name: 'DS User / CSO Scrutinizer', code: 'DS_USER', permissions: ['scrutiny.manage', 'data.download'] },
-  { id: 'fod-hq', name: 'FOD HQ User', code: 'FOD_HQ', permissions: ['reports.view', 'dashboard.view'] },
-  { id: 'zo-user', name: 'ZO User', code: 'ZO_USER', permissions: ['dashboard.view', 'reports.view'] },
-  { id: 'ro-user', name: 'RO User', code: 'RO_USER', permissions: ['frame.allocate', 'notice.generate'] },
-  { id: 'sso-user', name: 'SSO User', code: 'SSO_USER', permissions: ['survey.compile', 'survey.scrutinize'] },
-  { id: 'enterprise', name: 'Enterprise User', code: 'ENTERPRISE', permissions: ['survey.fill'] }
+  { id: 'ensd-admin', name: 'EnSD Admin', code: 'ENSD_ADMIN', permissions: ['*'], level: 1, isAdmin: true, isScrutinizer: false },
+  { id: 'cpg-user', name: 'CPG User', code: 'CPG_USER', permissions: ['frame.allocate', 'dashboard.view', 'user.create'], level: 2, isAdmin: true, isScrutinizer: false },
+  { id: 'ensd-ad-dd', name: 'EnSD AD/DD User', code: 'ENSD_AD_DD', permissions: ['dashboard.view', 'reports.view'], level: 3, isAdmin: true, isScrutinizer: false },
+  { id: 'ds-user', name: 'DS User / CSO Scrutinizer', code: 'DS_USER', permissions: ['scrutiny.manage', 'data.download', 'scrutiny.level2'], level: 4, isAdmin: false, isScrutinizer: true },
+  { id: 'zo-user', name: 'ZO User', code: 'ZO_USER', permissions: ['dashboard.view', 'reports.view', 'scrutiny.level1'], level: 5, isAdmin: false, isScrutinizer: true },
+  { id: 'ro-user', name: 'RO User', code: 'RO_USER', permissions: ['frame.allocate', 'notice.generate', 'scrutiny.level1'], level: 6, isAdmin: false, isScrutinizer: true },
+  { id: 'sso-user', name: 'SSO User', code: 'SSO_USER', permissions: ['survey.compile', 'survey.scrutinize', 'scrutiny.level1'], level: 7, isAdmin: false, isScrutinizer: true },
+  { id: 'jso-user', name: 'JSO User (Compiler)', code: 'JSO_USER', permissions: ['survey.compile', 'survey.fill'], level: 8, isAdmin: false, isScrutinizer: false },
+  { id: 'enterprise', name: 'Enterprise User', code: 'ENTERPRISE', permissions: ['survey.fill'], level: 9, isAdmin: false, isScrutinizer: false }
+];
+
+export const officeTypes: OfficeType[] = [
+  { id: 'cso', name: 'CSO', code: 'CSO', description: 'Central Statistical Office' },
+  { id: 'fod-hq', name: 'FOD HQ', code: 'FOD_HQ', description: 'Field Operations Division Headquarters' },
+  { id: 'zo', name: 'ZO', code: 'ZO', description: 'Zonal Office' },
+  { id: 'state-ro', name: 'State RO', code: 'STATE_RO', description: 'State Regional Office' },
+  { id: 'ro', name: 'RO', code: 'RO', description: 'Regional Office' },
+  { id: 'sro', name: 'SRO', code: 'SRO', description: 'Sub-Regional Office' }
 ];
 
 export const menuItems: MenuItem[] = [
@@ -35,6 +44,7 @@ export const menuItems: MenuItem[] = [
       { id: 'menu-access', title: 'Role Wise Menu Access', path: '/master-data/menu-access', icon: 'Menu', roles: ['ENSD_ADMIN'] },
       { id: 'nic-master', title: 'NIC Master', path: '/master-data/nic-master', icon: 'Building', roles: ['ENSD_ADMIN', 'CPG_USER'] },
       { id: 'npc-master', title: 'NPC Master', path: '/master-data/npc-master', icon: 'Package', roles: ['ENSD_ADMIN', 'CPG_USER'] },
+      { id: 'approval-workflow', title: 'Approval Workflow Configuration', path: '/master-data/approval-workflow', icon: 'GitBranch', roles: ['ENSD_ADMIN'] },
       { id: 'team-management', title: 'Team Management', path: '/master-data/team-management', icon: 'UsersRound', roles: ['ENSD_ADMIN'] },
       { id: 'office-type', title: 'Office Type', path: '/master-data/office-type', icon: 'Building2', roles: ['ENSD_ADMIN'] },
       { id: 'location-master', title: 'Office Location', path: '/master-data/location-master', icon: 'MapPin', roles: ['ENSD_ADMIN'] },

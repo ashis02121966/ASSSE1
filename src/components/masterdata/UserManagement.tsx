@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Plus, Edit, Trash2, Search, Filter, Eye, X, Save, UserPlus } from 'lucide-react';
-import { userRoles } from '../../data/mockData';
+import { userRoles, officeTypes } from '../../data/mockData';
+import { OfficeType, UserRole } from '../../types';
 
 interface User {
   id: string;
@@ -10,11 +11,14 @@ interface User {
   status: 'Active' | 'Inactive';
   lastLogin: string;
   profileImage?: string;
+  officeType?: string;
+  officeLocation?: string;
 }
 
 const UserManagement: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterRole, setFilterRole] = useState('all');
+  const [filterOfficeType, setFilterOfficeType] = useState('all');
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState(false);
@@ -27,7 +31,9 @@ const UserManagement: React.FC = () => {
       roles: ['EnSD Admin'], 
       status: 'Active', 
       lastLogin: '2024-01-15',
-      profileImage: 'https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&dpr=1'
+      profileImage: 'https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&dpr=1',
+      officeType: 'CSO',
+      officeLocation: 'New Delhi'
     },
     { 
       id: '2', 
@@ -36,7 +42,9 @@ const UserManagement: React.FC = () => {
       roles: ['CPG User', 'RO User'], 
       status: 'Active', 
       lastLogin: '2024-01-14',
-      profileImage: 'https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&dpr=1'
+      profileImage: 'https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&dpr=1',
+      officeType: 'FOD HQ',
+      officeLocation: 'Mumbai'
     },
     { 
       id: '3', 
@@ -45,7 +53,9 @@ const UserManagement: React.FC = () => {
       roles: ['DS User', 'SSO User'], 
       status: 'Inactive', 
       lastLogin: '2024-01-10',
-      profileImage: 'https://images.pexels.com/photos/1222271/pexels-photo-1222271.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&dpr=1'
+      profileImage: 'https://images.pexels.com/photos/1222271/pexels-photo-1222271.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&dpr=1',
+      officeType: 'ZO',
+      officeLocation: 'Chennai'
     },
     { 
       id: '4', 
@@ -54,7 +64,9 @@ const UserManagement: React.FC = () => {
       roles: ['RO User'], 
       status: 'Active', 
       lastLogin: '2024-01-15',
-      profileImage: 'https://images.pexels.com/photos/1681010/pexels-photo-1681010.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&dpr=1'
+      profileImage: 'https://images.pexels.com/photos/1681010/pexels-photo-1681010.jpeg?auto=compress&cs=tinysrgb&w=150&h=150&dpr=1',
+      officeType: 'RO',
+      officeLocation: 'Kolkata'
     },
   ]);
   
@@ -62,14 +74,26 @@ const UserManagement: React.FC = () => {
     name: '',
     email: '',
     roles: [],
-    status: 'Active'
+    status: 'Active',
+    officeType: '',
+    officeLocation: ''
   });
 
-  const availableRoles = userRoles.map(role => role.name);
+  // Get available roles based on selected office type
+  const getAvailableRoles = (officeType: string): UserRole[] => {
+    if (!officeType) return [];
+    
+    // All roles can be assigned to any office type, but with different permissions
+    return userRoles.filter(role => {
+      // Enterprise users don't belong to any office
+      if (role.code === 'ENTERPRISE') return false;
+      return true;
+    }).sort((a, b) => a.level - b.level); // Sort by hierarchy level
+  };
 
   const handleAddUser = () => {
-    if (!newUser.name || !newUser.email || newUser.roles.length === 0) {
-      alert('Please fill in all required fields and select at least one role');
+    if (!newUser.name || !newUser.email || !newUser.officeType || newUser.roles.length === 0) {
+      alert('Please fill in all required fields including office type and select at least one role');
       return;
     }
 
@@ -81,7 +105,9 @@ const UserManagement: React.FC = () => {
 
     const userId = `user-${Date.now()}`;
     const userWithId: User = {
-      ...newUser,
+        status: 'Active',
+        officeType: '',
+        officeLocation: ''
       id: userId,
       lastLogin: new Date().toISOString().split('T')[0]
     };
@@ -97,8 +123,8 @@ const UserManagement: React.FC = () => {
   };
 
   const handleEditUser = () => {
-    if (!selectedUser || !selectedUser.name || !selectedUser.email || selectedUser.roles.length === 0) {
-      alert('Please fill in all required fields and select at least one role');
+    if (!selectedUser || !selectedUser.name || !selectedUser.email || !selectedUser.officeType || selectedUser.roles.length === 0) {
+      alert('Please fill in all required fields including office type and select at least one role');
       return;
     }
 
@@ -162,7 +188,8 @@ const UserManagement: React.FC = () => {
     const matchesSearch = user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          user.email.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesRole = filterRole === 'all' || user.roles.includes(filterRole);
-    return matchesSearch && matchesRole;
+    const matchesOfficeType = filterOfficeType === 'all' || user.officeType === filterOfficeType;
+    return matchesSearch && matchesRole && matchesOfficeType;
   });
 
   const renderRoleSelection = (selectedRoles: string[], target: 'new' | 'edit') => (
@@ -170,24 +197,46 @@ const UserManagement: React.FC = () => {
       <label className="block text-sm font-medium text-gray-700 mb-2">
         Roles * (Select multiple roles)
       </label>
+      {!((target === 'new' ? newUser.officeType : selectedUser?.officeType)) && (
+        <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-md mb-2">
+          <p className="text-sm text-yellow-800">Please select an office type first to see available roles.</p>
+        </div>
+      )}
       <div className="space-y-2 max-h-40 overflow-y-auto border border-gray-300 rounded-md p-3">
-        {availableRoles.map((role) => (
-          <div key={role} className="flex items-center">
+        {getAvailableRoles(target === 'new' ? newUser.officeType || '' : selectedUser?.officeType || '').map((role) => (
+          <div key={role.name} className="flex items-center">
             <input
               type="checkbox"
-              id={`${target}-${role}`}
-              checked={selectedRoles.includes(role)}
-              onChange={(e) => handleRoleToggle(role, e.target.checked, target)}
+              id={`${target}-${role.name}`}
+              checked={selectedRoles.includes(role.name)}
+              onChange={(e) => handleRoleToggle(role.name, e.target.checked, target)}
               className="mr-2 rounded"
             />
-            <label htmlFor={`${target}-${role}`} className="text-sm text-gray-700">
-              {role}
+            <label htmlFor={`${target}-${role.name}`} className="text-sm text-gray-700">
+              <div className="flex items-center justify-between w-full">
+                <span>{role.name}</span>
+                <div className="flex items-center space-x-2 ml-2">
+                  <span className={`px-2 py-1 text-xs rounded-full ${
+                    role.isAdmin ? 'bg-purple-100 text-purple-800' : 
+                    role.isScrutinizer ? 'bg-orange-100 text-orange-800' : 
+                    'bg-gray-100 text-gray-800'
+                  }`}>
+                    Level {role.level}
+                  </span>
+                  {role.isAdmin && (
+                    <span className="px-2 py-1 bg-purple-100 text-purple-800 text-xs rounded-full">Admin</span>
+                  )}
+                  {role.isScrutinizer && (
+                    <span className="px-2 py-1 bg-orange-100 text-orange-800 text-xs rounded-full">Scrutinizer</span>
+                  )}
+                </div>
+              </div>
             </label>
           </div>
         ))}
       </div>
       <p className="text-xs text-gray-500 mt-1">
-        Users can have multiple roles for different responsibilities
+        Users can have multiple roles. Role hierarchy: EnSD Admin (1) → CPG User (2) → EnSD AD/DD (3) → DS User (4) → ZO (5) → RO (6) → SSO (7) → JSO (8)
       </p>
     </div>
   );
@@ -213,6 +262,20 @@ const UserManagement: React.FC = () => {
             <input
               type="text"
               placeholder="Search users..."
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Office Type
+                </label>
+                <p className="text-sm text-gray-900 p-2 bg-gray-50 rounded">{selectedUser.officeType || 'Not Set'}</p>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Office Location
+                </label>
+                <p className="text-sm text-gray-900 p-2 bg-gray-50 rounded">{selectedUser.officeLocation || 'Not Set'}</p>
+              </div>
               className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -227,8 +290,20 @@ const UserManagement: React.FC = () => {
                 onChange={(e) => setFilterRole(e.target.value)}
               >
                 <option value="all">All Roles</option>
-                {availableRoles.map(role => (
-                  <option key={role} value={role}>{role}</option>
+                {userRoles.map(role => (
+                  <option key={role.name} value={role.name}>{role.name}</option>
+                ))}
+              </select>
+            </div>
+            <div className="flex items-center space-x-2">
+              <select
+                className="border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                value={filterOfficeType}
+                onChange={(e) => setFilterOfficeType(e.target.value)}
+              >
+                <option value="all">All Office Types</option>
+                {officeTypes.map(office => (
+                  <option key={office.code} value={office.name}>{office.name}</option>
                 ))}
               </select>
             </div>
@@ -244,6 +319,9 @@ const UserManagement: React.FC = () => {
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   User
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Office Type
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Roles
@@ -272,8 +350,14 @@ const UserManagement: React.FC = () => {
                       <div className="ml-4">
                         <div className="text-sm font-medium text-gray-900">{user.name}</div>
                         <div className="text-sm text-gray-500">{user.email}</div>
+                        {user.officeLocation && (
+                          <div className="text-xs text-gray-400">{user.officeLocation}</div>
+                        )}
                       </div>
                     </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900">{user.officeType || 'Not Set'}</div>
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex flex-wrap gap-1">
@@ -373,7 +457,43 @@ const UserManagement: React.FC = () => {
                 />
               </div>
               
-              {renderRoleSelection(newUser.roles, 'new')}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Office Type *
+                </label>
+                <select
+                  value={newUser.officeType}
+                  onChange={(e) => {
+                    setNewUser({...newUser, officeType: e.target.value, roles: []});
+                  }}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Select Office Type</option>
+                  {officeTypes.map((office) => (
+                    <option key={office.id} value={office.name}>
+                      {office.name} - {office.description}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-gray-500 mt-1">
+                  Select office type before choosing roles
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Office Location
+                </label>
+                <input
+                  type="text"
+                  value={newUser.officeLocation}
+                  onChange={(e) => setNewUser({...newUser, officeLocation: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Enter office location"
+                />
+              </div>
+
+              {newUser.officeType && renderRoleSelection(newUser.roles, 'new')}
               
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -399,7 +519,7 @@ const UserManagement: React.FC = () => {
               </button>
               <button
                 onClick={handleAddUser}
-                disabled={!newUser.name || !newUser.email || newUser.roles.length === 0}
+                disabled={!newUser.name || !newUser.email || !newUser.officeType || newUser.roles.length === 0}
                 className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center space-x-2"
               >
                 <Save size={16} />
@@ -454,7 +574,40 @@ const UserManagement: React.FC = () => {
                 />
               </div>
               
-              {renderRoleSelection(selectedUser.roles, 'edit')}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Office Type *
+                </label>
+                <select
+                  value={selectedUser.officeType}
+                  onChange={(e) => {
+                    setSelectedUser({...selectedUser, officeType: e.target.value, roles: []});
+                  }}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">Select Office Type</option>
+                  {officeTypes.map((office) => (
+                    <option key={office.id} value={office.name}>
+                      {office.name} - {office.description}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Office Location
+                </label>
+                <input
+                  type="text"
+                  value={selectedUser.officeLocation}
+                  onChange={(e) => setSelectedUser({...selectedUser, officeLocation: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Enter office location"
+                />
+              </div>
+
+              {selectedUser.officeType && renderRoleSelection(selectedUser.roles, 'edit')}
               
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -483,7 +636,7 @@ const UserManagement: React.FC = () => {
               </button>
               <button
                 onClick={handleEditUser}
-                disabled={!selectedUser.name || !selectedUser.email || selectedUser.roles.length === 0}
+                disabled={!selectedUser.name || !selectedUser.email || !selectedUser.officeType || selectedUser.roles.length === 0}
                 className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center space-x-2"
               >
                 <Save size={16} />
