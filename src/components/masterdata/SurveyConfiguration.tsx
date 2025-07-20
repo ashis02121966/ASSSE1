@@ -32,8 +32,21 @@ interface BlockTemplate {
     label: string;
     type: string;
     required: boolean;
+    length?: number;
+    validation?: string;
   }>;
   category: string;
+}
+
+interface BlockItem {
+  id: string;
+  itemId: string;
+  itemName: string;
+  dataType: 'text' | 'number' | 'date' | 'select' | 'textarea' | 'checkbox' | 'radio';
+  length: number;
+  required: boolean;
+  validation?: string;
+  options?: string[];
 }
 
 const SurveyConfiguration: React.FC = () => {
@@ -44,6 +57,17 @@ const SurveyConfiguration: React.FC = () => {
   const [selectedBlock, setSelectedBlock] = useState<SurveyBlock | null>(null);
   const [selectedTemplate, setSelectedTemplate] = useState<string>('');
   const [createFromTemplate, setCreateFromTemplate] = useState(true);
+  const [blockItems, setBlockItems] = useState<BlockItem[]>([]);
+  const [showAddItemModal, setShowAddItemModal] = useState(false);
+  const [newItem, setNewItem] = useState<Omit<BlockItem, 'id'>>({
+    itemId: '',
+    itemName: '',
+    dataType: 'text',
+    length: 50,
+    required: false,
+    validation: '',
+    options: []
+  });
 
   const [surveyBlocks, setSurveyBlocks] = useState<SurveyBlock[]>([
     { id: '1', name: 'Basic Information', description: 'Enterprise identification and basic details', fields: 15, required: true, order: 1, isTemplate: false },
@@ -81,10 +105,10 @@ const SurveyConfiguration: React.FC = () => {
       description: 'Standard enterprise identification block',
       category: 'Basic',
       fields: [
-        { id: 'enterprise_name', label: 'Enterprise Name', type: 'text', required: true },
-        { id: 'gstin', label: 'GSTIN', type: 'text', required: true },
-        { id: 'address', label: 'Address', type: 'textarea', required: true },
-        { id: 'contact_person', label: 'Contact Person', type: 'text', required: true }
+        { id: 'enterprise_name', label: 'Enterprise Name', type: 'text', required: true, length: 100 },
+        { id: 'gstin', label: 'GSTIN', type: 'text', required: true, length: 15, validation: 'gstin_format' },
+        { id: 'address', label: 'Address', type: 'textarea', required: true, length: 500 },
+        { id: 'contact_person', label: 'Contact Person', type: 'text', required: true, length: 100 }
       ]
     },
     {
@@ -93,9 +117,9 @@ const SurveyConfiguration: React.FC = () => {
       description: 'Standard financial data collection block',
       category: 'Financial',
       fields: [
-        { id: 'total_revenue', label: 'Total Revenue', type: 'number', required: true },
-        { id: 'total_expenses', label: 'Total Expenses', type: 'number', required: true },
-        { id: 'net_profit', label: 'Net Profit', type: 'number', required: true }
+        { id: 'total_revenue', label: 'Total Revenue', type: 'number', required: true, length: 15 },
+        { id: 'total_expenses', label: 'Total Expenses', type: 'number', required: true, length: 15 },
+        { id: 'net_profit', label: 'Net Profit', type: 'number', required: true, length: 15 }
       ]
     },
     {
@@ -104,9 +128,9 @@ const SurveyConfiguration: React.FC = () => {
       description: 'Standard employment information block',
       category: 'Employment',
       fields: [
-        { id: 'male_employees', label: 'Male Employees', type: 'number', required: true },
-        { id: 'female_employees', label: 'Female Employees', type: 'number', required: true },
-        { id: 'total_employees', label: 'Total Employees', type: 'number', required: true }
+        { id: 'male_employees', label: 'Male Employees', type: 'number', required: true, length: 10 },
+        { id: 'female_employees', label: 'Female Employees', type: 'number', required: true, length: 10 },
+        { id: 'total_employees', label: 'Total Employees', type: 'number', required: true, length: 10 }
       ]
     }
   ]);
@@ -130,9 +154,113 @@ const SurveyConfiguration: React.FC = () => {
     isActive: true
   });
 
+  // Load template items when template is selected
+  const loadTemplateItems = (templateId: string) => {
+    const template = blockTemplates.find(t => t.id === templateId);
+    if (template) {
+      const items: BlockItem[] = template.fields.map((field, index) => ({
+        id: `item-${Date.now()}-${index}`,
+        itemId: field.id,
+        itemName: field.label,
+        dataType: field.type as BlockItem['dataType'],
+        length: field.length || 50,
+        required: field.required,
+        validation: field.validation || ''
+      }));
+      setBlockItems(items);
+    }
+  };
+
+  // Handle template selection
+  const handleTemplateSelection = (templateId: string) => {
+    setSelectedTemplate(templateId);
+    if (templateId) {
+      loadTemplateItems(templateId);
+      const template = blockTemplates.find(t => t.id === templateId);
+      if (template) {
+        setNewBlock({
+          ...newBlock,
+          name: template.name,
+          description: template.description,
+          fields: template.fields.length
+        });
+      }
+    } else {
+      setBlockItems([]);
+    }
+  };
+
+  // Handle creating new block from scratch
+  const handleCreateFromScratch = () => {
+    setCreateFromTemplate(false);
+    setSelectedTemplate('');
+    setBlockItems([]);
+    setNewBlock({
+      name: '',
+      description: '',
+      fields: 0,
+      required: true,
+      order: surveyBlocks.length + 1,
+      isTemplate: false
+    });
+  };
+
+  // Add new item to block
+  const handleAddItem = () => {
+    if (!newItem.itemId.trim() || !newItem.itemName.trim()) {
+      alert('Please provide Item ID and Item Name');
+      return;
+    }
+
+    // Check for duplicate item IDs
+    if (blockItems.some(item => item.itemId === newItem.itemId)) {
+      alert('Item ID already exists. Please use a unique Item ID.');
+      return;
+    }
+
+    const itemId = `item-${Date.now()}`;
+    const itemWithId: BlockItem = {
+      ...newItem,
+      id: itemId
+    };
+
+    setBlockItems([...blockItems, itemWithId]);
+    setNewBlock({
+      ...newBlock,
+      fields: blockItems.length + 1
+    });
+    setNewItem({
+      itemId: '',
+      itemName: '',
+      dataType: 'text',
+      length: 50,
+      required: false,
+      validation: '',
+      options: []
+    });
+    setShowAddItemModal(false);
+  };
+
+  // Remove item from block
+  const handleRemoveItem = (itemId: string) => {
+    if (confirm('Are you sure you want to remove this item?')) {
+      const updatedItems = blockItems.filter(item => item.id !== itemId);
+      setBlockItems(updatedItems);
+      setNewBlock({
+        ...newBlock,
+        fields: updatedItems.length
+      });
+    }
+  };
+
   const handleAddBlock = () => {
     if (!newBlock.name.trim()) {
       alert('Please provide a block name');
+      return;
+    }
+
+    if (blockItems.length === 0) {
+      alert('Please add at least one item to the block');
       return;
     }
 
@@ -145,7 +273,7 @@ const SurveyConfiguration: React.FC = () => {
           ...blockData,
           name: template.name,
           description: template.description,
-          fields: template.fields.length,
+          fields: blockItems.length,
           templateId: template.id,
           isTemplate: true
         };
@@ -153,6 +281,7 @@ const SurveyConfiguration: React.FC = () => {
     }
 
     const blockId = `block-${Date.now()}`;
+    blockData.fields = blockItems.length;
     const blockWithId: SurveyBlock = {
       ...blockData,
       id: blockId
@@ -167,6 +296,8 @@ const SurveyConfiguration: React.FC = () => {
       order: surveyBlocks.length + 2,
       isTemplate: false
     });
+    setBlockItems([]);
+    setCreateFromTemplate(true);
     setSelectedTemplate('');
     setShowAddBlockModal(false);
     alert('Block added successfully!');
@@ -553,7 +684,7 @@ const SurveyConfiguration: React.FC = () => {
                     </label>
                     <select
                       value={selectedTemplate}
-                      onChange={(e) => setSelectedTemplate(e.target.value)}
+                      onChange={(e) => handleTemplateSelection(e.target.value)}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     >
                       <option value="">Choose a template...</option>
@@ -597,7 +728,6 @@ const SurveyConfiguration: React.FC = () => {
                   onChange={(e) => setNewBlock({...newBlock, name: e.target.value})}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="e.g., Enterprise Basic Information"
-                  disabled={createFromTemplate && selectedTemplate !== ''}
                 />
               </div>
 
@@ -611,7 +741,6 @@ const SurveyConfiguration: React.FC = () => {
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   rows={3}
                   placeholder="Describe the purpose and content of this block"
-                  disabled={createFromTemplate && selectedTemplate !== ''}
                 />
               </div>
 
@@ -640,10 +769,12 @@ const SurveyConfiguration: React.FC = () => {
                     type="number"
                     min="0"
                     value={newBlock.fields}
-                    onChange={(e) => setNewBlock({...newBlock, fields: parseInt(e.target.value) || 0})}
+                    readOnly
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    disabled={createFromTemplate && selectedTemplate !== ''}
                   />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Auto-calculated based on items added
+                  </p>
                 </div>
               </div>
 
@@ -659,6 +790,64 @@ const SurveyConfiguration: React.FC = () => {
                   Required block (must be completed to submit survey)
                 </label>
               </div>
+
+              {/* Block Items Section */}
+              <div className="border-t border-gray-200 pt-4">
+                <div className="flex justify-between items-center mb-4">
+                  <h4 className="font-medium text-gray-900">Block Items</h4>
+                  <button
+                    type="button"
+                    onClick={() => setShowAddItemModal(true)}
+                    className="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700 flex items-center space-x-1"
+                  >
+                    <Plus size={14} />
+                    <span>Add Item</span>
+                  </button>
+                </div>
+
+                {blockItems.length > 0 ? (
+                  <div className="space-y-2 max-h-60 overflow-y-auto">
+                    {blockItems.map((item, index) => (
+                      <div key={item.id} className="flex items-center justify-between p-3 bg-gray-50 rounded border">
+                        <div className="flex-1">
+                          <div className="flex items-center space-x-2">
+                            <span className="text-sm font-medium text-gray-900">{item.itemName}</span>
+                            <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded">
+                              {item.dataType}
+                            </span>
+                            {item.required && (
+                              <span className="px-2 py-1 bg-red-100 text-red-800 text-xs rounded">Required</span>
+                            )}
+                          </div>
+                          <div className="text-xs text-gray-500 mt-1">
+                            ID: {item.itemId} • Length: {item.length}
+                            {item.validation && ` • Validation: ${item.validation}`}
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveItem(item.id)}
+                          className="text-red-600 hover:text-red-800 p-1 rounded"
+                          title="Remove Item"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-gray-500 border border-gray-200 rounded">
+                    <Settings className="h-8 w-8 mx-auto mb-2 text-gray-300" />
+                    <p className="text-sm">No items added yet</p>
+                    <p className="text-xs">
+                      {createFromTemplate && selectedTemplate 
+                        ? 'Select a template to load predefined items or add custom items'
+                        : 'Add items to define the structure of this block'
+                      }
+                    </p>
+                  </div>
+                )}
+              </div>
             </div>
 
             <div className="mt-6 flex justify-end space-x-3">
@@ -670,10 +859,154 @@ const SurveyConfiguration: React.FC = () => {
               </button>
               <button
                 onClick={handleAddBlock}
-                disabled={!newBlock.name.trim() || (createFromTemplate && !selectedTemplate)}
+                disabled={!newBlock.name.trim() || blockItems.length === 0}
                 className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
               >
                 Add Block
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add Item Modal */}
+      {showAddItemModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">Add Block Item</h3>
+              <button 
+                onClick={() => setShowAddItemModal(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Item ID *
+                  </label>
+                  <input
+                    type="text"
+                    value={newItem.itemId}
+                    onChange={(e) => setNewItem({...newItem, itemId: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="e.g., enterprise_name, total_revenue"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Unique identifier for this item</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Item Name *
+                  </label>
+                  <input
+                    type="text"
+                    value={newItem.itemName}
+                    onChange={(e) => setNewItem({...newItem, itemName: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="e.g., Enterprise Name, Total Revenue"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Display label for this item</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Data Type *
+                  </label>
+                  <select
+                    value={newItem.dataType}
+                    onChange={(e) => setNewItem({...newItem, dataType: e.target.value as BlockItem['dataType']})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="text">Text</option>
+                    <option value="number">Number</option>
+                    <option value="date">Date</option>
+                    <option value="select">Select/Dropdown</option>
+                    <option value="textarea">Text Area</option>
+                    <option value="checkbox">Checkbox</option>
+                    <option value="radio">Radio Button</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Length
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="1000"
+                    value={newItem.length}
+                    onChange={(e) => setNewItem({...newItem, length: parseInt(e.target.value) || 50})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Maximum character/digit length</p>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Validation Rules (Optional)
+                </label>
+                <input
+                  type="text"
+                  value={newItem.validation}
+                  onChange={(e) => setNewItem({...newItem, validation: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="e.g., email_format, gstin_format, positive_number"
+                />
+                <p className="text-xs text-gray-500 mt-1">Custom validation rules for this item</p>
+              </div>
+
+              {(newItem.dataType === 'select' || newItem.dataType === 'radio') && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Options (comma-separated)
+                  </label>
+                  <textarea
+                    value={newItem.options?.join(', ') || ''}
+                    onChange={(e) => setNewItem({...newItem, options: e.target.value.split(',').map(opt => opt.trim()).filter(opt => opt)})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    rows={2}
+                    placeholder="Option 1, Option 2, Option 3"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Available options for selection</p>
+                </div>
+              )}
+
+              <div className="flex items-center">
+                <input
+                  type="checkbox"
+                  id="item-required"
+                  checked={newItem.required}
+                  onChange={(e) => setNewItem({...newItem, required: e.target.checked})}
+                  className="mr-2 rounded"
+                />
+                <label htmlFor="item-required" className="text-sm text-gray-700">
+                  Required field (must be filled to proceed)
+                </label>
+              </div>
+            </div>
+
+            <div className="mt-6 flex justify-end space-x-3">
+              <button
+                onClick={() => setShowAddItemModal(false)}
+                className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleAddItem}
+                disabled={!newItem.itemId.trim() || !newItem.itemName.trim()}
+                className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+              >
+                Add Item
               </button>
             </div>
           </div>
