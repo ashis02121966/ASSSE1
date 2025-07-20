@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, Filter, Eye, MessageSquare, CheckCircle, AlertCircle, Clock, FileText, Send, Trash2 } from 'lucide-react';
+import { Search, Filter, Eye, MessageSquare, CheckCircle, AlertCircle, Clock, FileText, Send, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
 import { surveyBlocks as allSurveyBlocks } from '../../data/surveyBlocks';
 
 interface ScrutinySurvey {
@@ -53,6 +53,7 @@ const ScrutinyManagement: React.FC = () => {
   const [newComment, setNewComment] = useState('');
   const [selectedFieldForComment, setSelectedFieldForComment] = useState<string | null>(null);
   const [surveyResponses, setSurveyResponses] = useState<{[key: string]: any}>({});
+  const [collapsedComments, setCollapsedComments] = useState<{[key: string]: boolean}>({});
 
   // Mock scrutiny surveys data with GSTN
   const scrutinySurveys: ScrutinySurvey[] = [
@@ -261,6 +262,16 @@ const ScrutinyManagement: React.FC = () => {
     return comments.filter(c => c.fieldId === fieldId && c.blockId === surveyBlocks[currentBlock].id);
   };
 
+  const toggleCommentsCollapse = (fieldId: string) => {
+    setCollapsedComments(prev => ({
+      ...prev,
+      [fieldId]: !prev[fieldId]
+    }));
+  };
+
+  const isCommentsCollapsed = (fieldId: string) => {
+    return collapsedComments[fieldId] || false;
+  };
   const renderScrutinyForm = () => {
     const surveyBlocks = getSurveyBlocks();
     const block = surveyBlocks[currentBlock];
@@ -387,6 +398,23 @@ const ScrutinyManagement: React.FC = () => {
                       >
                         <MessageSquare size={16} />
                       </button>
+                      {/* Show comment count if there are comments for this row */}
+                      {getFieldComments(`${block.id}_${rowIndex}`).length > 0 && (
+                        <div className="flex items-center space-x-1">
+                          <button
+                            onClick={() => toggleCommentsCollapse(`${block.id}_${rowIndex}`)}
+                            className="text-orange-600 hover:text-orange-800 p-1 rounded flex items-center space-x-1"
+                            title="Toggle Comments"
+                          >
+                            <span className="text-xs">{getFieldComments(`${block.id}_${rowIndex}`).length}</span>
+                            {isCommentsCollapsed(`${block.id}_${rowIndex}`) ? (
+                              <ChevronDown size={12} />
+                            ) : (
+                              <ChevronUp size={12} />
+                            )}
+                          </button>
+                        </div>
+                      )}
                     </div>
                     
                     {field.type === 'textarea' ? (
@@ -422,23 +450,45 @@ const ScrutinyManagement: React.FC = () => {
                     {/* Field Comments */}
                     {fieldComments.length > 0 && (
                       <div className="mt-2 space-y-2">
-                        {fieldComments.map((comment) => (
-                          <div key={comment.id} className="bg-orange-50 border border-orange-200 rounded p-3">
-                            <div className="flex justify-between items-start">
-                              <div className="flex-1">
-                                <p className="text-sm text-orange-800">{comment.comment}</p>
-                                <p className="text-xs text-orange-600 mt-1">
-                                  {comment.scrutinizer} • {comment.timestamp}
-                                </p>
-                              </div>
-                              {!comment.resolved && (
-                                <span className="px-2 py-1 bg-orange-100 text-orange-800 text-xs rounded-full">
-                                  Pending
-                                </span>
-                              )}
+                        <div className="bg-orange-50 border border-orange-200 rounded">
+                          <div className="flex items-center justify-between p-2 cursor-pointer" onClick={() => toggleCommentsCollapse(field.id)}>
+                            <div className="flex items-center space-x-2">
+                              <MessageSquare size={14} className="text-orange-600" />
+                              <span className="text-sm font-medium text-orange-800">
+                                {fieldComments.length} Comment{fieldComments.length > 1 ? 's' : ''}
+                              </span>
+                              <span className="text-xs text-orange-600">
+                                ({fieldComments.filter(c => !c.resolved).length} pending)
+                              </span>
                             </div>
+                            {isCommentsCollapsed(field.id) ? (
+                              <ChevronDown size={16} className="text-orange-600" />
+                            ) : (
+                              <ChevronUp size={16} className="text-orange-600" />
+                            )}
                           </div>
-                        ))}
+                          {!isCommentsCollapsed(field.id) && (
+                            <div className="px-3 pb-3 space-y-2">
+                              {fieldComments.map((comment) => (
+                                <div key={comment.id} className="bg-white border border-orange-200 rounded p-3">
+                                  <div className="flex justify-between items-start">
+                                    <div className="flex-1">
+                                      <p className="text-sm text-orange-800">{comment.comment}</p>
+                                      <p className="text-xs text-orange-600 mt-1">
+                                        {comment.scrutinizer} • {comment.timestamp}
+                                      </p>
+                                    </div>
+                                    {!comment.resolved && (
+                                      <span className="px-2 py-1 bg-orange-100 text-orange-800 text-xs rounded-full">
+                                        Pending
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     )}
                     
@@ -588,6 +638,33 @@ const ScrutinyManagement: React.FC = () => {
                       Actions
                     </th>
                   </tr>
+                  {/* Row Comments Display */}
+                  {getFieldComments(`${block.id}_${rowIndex}`).length > 0 && !isCommentsCollapsed(`${block.id}_${rowIndex}`) && (
+                    <tr>
+                      <td colSpan={block.gridColumns?.length ? block.gridColumns.length + 1 : 1} className="px-4 py-2 border border-gray-300 bg-orange-50">
+                        <div className="space-y-2">
+                          <h6 className="text-sm font-medium text-orange-800">Comments for Row {rowIndex + 1}:</h6>
+                          {getFieldComments(`${block.id}_${rowIndex}`).map((comment) => (
+                            <div key={comment.id} className="bg-white border border-orange-200 rounded p-3">
+                              <div className="flex justify-between items-start">
+                                <div className="flex-1">
+                                  <p className="text-sm text-orange-800">{comment.comment}</p>
+                                  <p className="text-xs text-orange-600 mt-1">
+                                    {comment.scrutinizer} • {comment.timestamp}
+                                  </p>
+                                </div>
+                                {!comment.resolved && (
+                                  <span className="px-2 py-1 bg-orange-100 text-orange-800 text-xs rounded-full">
+                                    Pending
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </td>
+                    </tr>
+                  )}
                 </thead>
                 <tbody>
                   {comments.map((comment) => {
