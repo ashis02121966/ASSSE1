@@ -369,8 +369,9 @@ const FrameUpload: React.FC = () => {
         <h1 className="text-2xl font-bold text-gray-900">Frame Upload</h1>
         <button 
           onClick={() => {
-            // Create a blob from the template data
-            const blob = new Blob([templateData], { type: 'text/csv' });
+            // Create proper CSV content with BOM for Excel compatibility
+            const csvContent = '\uFEFF' + templateData; // Add BOM for proper Excel opening
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8' });
             // Create a URL for the blob
             const url = URL.createObjectURL(blob);
             // Create a temporary anchor element
@@ -565,14 +566,21 @@ const FrameUpload: React.FC = () => {
                       </button>
                       <button 
                         onClick={() => {
-                          // Create a blob with sample data
-                          const blob = new Blob([`Sample data for ${frame.fileName}`], { type: 'text/plain' });
+                          // Generate proper Excel-compatible CSV content
+                          const csvHeader = 'CSOID,StateCode,SROCode,DistrictCode,DistrictName,Sector,PslNo,FrameNIC,Scheme,New Scheme,RegistrationNo,CompanyName,CompanyAddress,CompanyPlace,companyPincode,PSU,NoOfEmployees,JointReturnCode,DSLNo,IsSelected,SubSampleNo,App_SurveyYear,App_MotherUnit,PINCode,Description,EmailId,IsPrevYearSelected,ITUse,RU,App_AddEditFlg,remarks,StatusCode\n';
+                          const sampleRows = [
+                            '001,27,001,001,Mumbai,2,12345,25111,ASI,ASI2024,REG001,"ABC Manufacturing Ltd.","123 Industrial Area, Mumbai","Mumbai",400001,0,150,0,DSL001,1,1,2024,0,400001,"Manufacturing of metal products","contact@abc.com",0,1,2,0,"Sample data",1',
+                            '001,27,001,002,Pune,2,12346,25112,ASI,ASI2024,REG002,"XYZ Industries Pvt Ltd","456 Tech Park, Pune","Pune",411001,0,200,0,DSL002,1,2,2024,0,411001,"Manufacturing of machinery","info@xyz.com",0,1,2,0,"Sample data",1'
+                          ].join('\n');
+                          
+                          const csvContent = '\uFEFF' + csvHeader + sampleRows; // Add BOM for Excel compatibility
+                          const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8' });
                           // Create a URL for the blob
                           const url = URL.createObjectURL(blob);
                           // Create a temporary anchor element
                           const a = document.createElement('a');
                           a.href = url;
-                          a.download = frame.fileName;
+                          a.download = frame.fileName.replace(/\.[^/.]+$/, '') + '_sample.csv';
                           // Trigger a click on the anchor
                           document.body.appendChild(a);
                           a.click();

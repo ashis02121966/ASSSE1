@@ -100,12 +100,71 @@ const GenerateNotice: React.FC = () => {
     const notice = generatedNotices.find(n => n.id === noticeId);
     if (!notice) return;
     
-    // Simulate PDF download
+    // Generate proper PDF content (in a real app, this would be actual PDF data from backend)
     const fileName = `Notice_${notice.enterpriseName.replace(/[^a-zA-Z0-9]/g, '_')}_${notice.generatedDate}.pdf`;
     
-    // Create a blob with sample PDF content (in real app, this would be actual PDF data)
-    const samplePdfContent = `Notice for ${notice.enterpriseName}\nGenerated on: ${notice.generatedDate}\nStatus: ${notice.status}`;
-    const blob = new Blob([samplePdfContent], { type: 'application/pdf' });
+    // Create a proper PDF-like content structure
+    const pdfContent = `%PDF-1.4
+1 0 obj
+<<
+/Type /Catalog
+/Pages 2 0 R
+>>
+endobj
+
+2 0 obj
+<<
+/Type /Pages
+/Kids [3 0 R]
+/Count 1
+>>
+endobj
+
+3 0 obj
+<<
+/Type /Page
+/Parent 2 0 R
+/MediaBox [0 0 612 792]
+/Contents 4 0 R
+>>
+endobj
+
+4 0 obj
+<<
+/Length 200
+>>
+stream
+BT
+/F1 12 Tf
+72 720 Td
+(NOTICE TO ENTERPRISE) Tj
+0 -20 Td
+(Enterprise: ${notice.enterpriseName}) Tj
+0 -20 Td
+(Generated on: ${notice.generatedDate}) Tj
+0 -20 Td
+(Status: ${notice.status}) Tj
+ET
+endstream
+endobj
+
+xref
+0 5
+0000000000 65535 f 
+0000000009 00000 n 
+0000000074 00000 n 
+0000000120 00000 n 
+0000000179 00000 n 
+trailer
+<<
+/Size 5
+/Root 1 0 R
+>>
+startxref
+380
+%%EOF`;
+    
+    const blob = new Blob([pdfContent], { type: 'application/pdf' });
     
     // Create download link
     const url = URL.createObjectURL(blob);
