@@ -181,6 +181,9 @@ export interface Database {
           name: string
           description: string
           order_index: number
+          template_id: string | null
+          is_template: boolean
+          category: string
           created_at: string
           updated_at: string
         }
@@ -190,6 +193,9 @@ export interface Database {
           name: string
           description?: string
           order_index: number
+          template_id?: string | null
+          is_template?: boolean
+          category?: string
           created_at?: string
           updated_at?: string
         }
@@ -198,6 +204,53 @@ export interface Database {
           schedule_id?: string
           name?: string
           description?: string
+          order_index?: number
+          template_id?: string | null
+          is_template?: boolean
+          category?: string
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      survey_block_items: {
+        Row: {
+          id: string
+          block_id: string
+          item_id: string
+          item_name: string
+          data_type: string
+          max_length: number
+          is_required: boolean
+          validation_rules: Json
+          options: Json
+          order_index: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          block_id: string
+          item_id: string
+          item_name: string
+          data_type: string
+          max_length?: number
+          is_required?: boolean
+          validation_rules?: Json
+          options?: Json
+          order_index?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          block_id?: string
+          item_id?: string
+          item_name?: string
+          data_type?: string
+          max_length?: number
+          is_required?: boolean
+          validation_rules?: Json
+          options?: Json
           order_index?: number
           created_at?: string
           updated_at?: string

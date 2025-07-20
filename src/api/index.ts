@@ -16,3 +16,7 @@ export { EnterpriseService } from '../services/enterpriseService';
 export { SurveyTemplateService } from '../services/surveyTemplateService';
 export { EnterpriseSurveyService } from '../services/enterpriseSurveyService';
 export { AuditLogService } from '../services/auditLogService';
+export { SurveyBlockService } from '../services/surveyBlockService';
+
+// Re-export new APIs
+export { SurveyBlockApi } from './surveyBlockApi';
