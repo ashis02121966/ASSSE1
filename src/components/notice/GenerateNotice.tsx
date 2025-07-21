@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { FileText, Plus, Eye, Download, Upload, Save, X, HelpCircle } from 'lucide-react';
+import { FileText, Plus, Eye, Download, Upload, Save, X, HelpCircle, Search, Filter } from 'lucide-react';
+import { useAuth } from '../../hooks/useAuth';
 
 interface NoticeTemplate {
   id: string;
@@ -26,13 +27,26 @@ interface NoticeData {
   issueDate: string;
 }
 
+interface Enterprise {
+  id: string;
+  name: string;
+  gstn: string;
+  address: string;
+  dslNumber: string;
+  sector: string;
+}
+
 const GenerateNotice: React.FC = () => {
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<'generate' | 'templates'>('generate');
   const [selectedTemplate, setSelectedTemplate] = useState<string>('');
   const [templates, setTemplates] = useState<NoticeTemplate[]>([]);
   const [showCreateTemplate, setShowCreateTemplate] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [showVariableHelp, setShowVariableHelp] = useState(false);
+  const [selectedEnterprises, setSelectedEnterprises] = useState<string[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterSector, setFilterSector] = useState('all');
   
   const [newTemplate, setNewTemplate] = useState({
     name: '',
@@ -47,14 +61,50 @@ const GenerateNotice: React.FC = () => {
     dslNumber: '',
     sector: '',
     dueDate: '',
-    signatoryName: '',
-    signatoryDesignation: '',
+    signatoryName: user?.name || '',
+    signatoryDesignation: 'Regional Officer',
     contactNumber: '',
     emailAddress: '',
     surveyType: 'Annual Survey of Service Sector Enterprises (ASSSE)',
     referenceNumber: '',
     issueDate: new Date().toISOString().split('T')[0]
   });
+
+  // Mock enterprises data
+  const enterprises: Enterprise[] = [
+    {
+      id: '1',
+      name: 'ABC Manufacturing Ltd.',
+      gstn: '27AABCU9603R1ZX',
+      address: '123 Industrial Area, Mumbai - 400001',
+      dslNumber: 'DSL001',
+      sector: 'Manufacturing'
+    },
+    {
+      id: '2',
+      name: 'XYZ Services Pvt. Ltd.',
+      gstn: '29AABCU9603R1ZY',
+      address: '456 Business Park, Pune - 411001',
+      dslNumber: 'DSL002',
+      sector: 'Services'
+    },
+    {
+      id: '3',
+      name: 'PQR Construction Co.',
+      gstn: '07AABCU9603R1ZZ',
+      address: '789 Construction Zone, Delhi - 110001',
+      dslNumber: 'DSL003',
+      sector: 'Construction'
+    },
+    {
+      id: '4',
+      name: 'LMN Trading Corp.',
+      gstn: '19AABCU9603R1ZA',
+      address: '321 Trade Center, Kolkata - 700001',
+      dslNumber: 'DSL004',
+      sector: 'Trade'
+    }
+  ];
 
   const defaultTemplate = `GOVERNMENT OF INDIA
 MINISTRY OF STATISTICS AND PROGRAMME IMPLEMENTATION
@@ -179,25 +229,61 @@ National Sample Survey Office`;
     return result;
   };
 
-  const generateNotice = () => {
+  const handleEnterpriseSelect = (enterpriseId: string) => {
+    setSelectedEnterprises(prev => 
+      prev.includes(enterpriseId) 
+        ? prev.filter(id => id !== enterpriseId)
+        : [...prev, enterpriseId]
+    );
+  };
+
+  const handleSelectAll = () => {
+    const filteredEnterpriseIds = filteredEnterprises.map(e => e.id);
+    setSelectedEnterprises(prev => 
+      prev.length === filteredEnterpriseIds.length ? [] : filteredEnterpriseIds
+    );
+  };
+
+  const generateNotices = () => {
+    if (selectedEnterprises.length === 0) {
+      alert('Please select at least one enterprise');
+      return;
+    }
+
     const template = templates.find(t => t.id === selectedTemplate);
     if (!template) {
       alert('Please select a template');
       return;
     }
 
-    const finalContent = substituteVariables(template.content, noticeData);
-    
-    // Create and download the notice
-    const blob = new Blob([finalContent], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `Notice_${noticeData.enterpriseName || 'Enterprise'}_${Date.now()}.txt`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    selectedEnterprises.forEach(enterpriseId => {
+      const enterprise = enterprises.find(e => e.id === enterpriseId);
+      if (enterprise) {
+        const enterpriseNoticeData = {
+          ...noticeData,
+          enterpriseName: enterprise.name,
+          gstin: enterprise.gstn,
+          enterpriseAddress: enterprise.address,
+          dslNumber: enterprise.dslNumber,
+          sector: enterprise.sector
+        };
+
+        const finalContent = substituteVariables(template.content, enterpriseNoticeData);
+        
+        // Create and download the notice
+        const blob = new Blob([finalContent], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `Notice_${enterprise.name.replace(/[^a-zA-Z0-9]/g, '_')}_${Date.now()}.txt`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }
+    });
+
+    alert(`Generated ${selectedEnterprises.length} notice(s) successfully!`);
   };
 
   const previewNotice = () => {
@@ -209,257 +295,305 @@ National Sample Survey Office`;
     setShowPreview(true);
   };
 
+  const filteredEnterprises = enterprises.filter(enterprise => {
+    const matchesSearch = enterprise.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         enterprise.gstn.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         enterprise.dslNumber.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSector = filterSector === 'all' || enterprise.sector === filterSector;
+    return matchesSearch && matchesSector;
+  });
+
   return (
-    <div className="p-6">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">Generate Notice</h1>
-        <p className="text-gray-600">Create and manage survey notices for enterprises</p>
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h1 className="text-2xl font-bold text-gray-900">Generate Notice</h1>
+        <div className="flex items-center space-x-2 text-sm text-gray-600">
+          <FileText size={16} />
+          <span>Survey Notice Generation</span>
+        </div>
       </div>
 
       {/* Tab Navigation */}
-      <div className="mb-6">
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200">
         <div className="border-b border-gray-200">
-          <nav className="-mb-px flex space-x-8">
+          <nav className="-mb-px flex space-x-8 px-6">
             <button
               onClick={() => setActiveTab('generate')}
-              className={`py-2 px-1 border-b-2 font-medium text-sm ${
+              className={`py-4 px-1 border-b-2 font-medium text-sm flex items-center space-x-2 ${
                 activeTab === 'generate'
-                  ? 'border-indigo-500 text-indigo-600'
+                  ? 'border-blue-500 text-blue-600'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
               }`}
             >
-              <FileText className="w-4 h-4 inline mr-2" />
-              Generate Notice
+              <FileText size={16} />
+              <span>Generate Notice</span>
             </button>
             <button
               onClick={() => setActiveTab('templates')}
-              className={`py-2 px-1 border-b-2 font-medium text-sm ${
+              className={`py-4 px-1 border-b-2 font-medium text-sm flex items-center space-x-2 ${
                 activeTab === 'templates'
-                  ? 'border-indigo-500 text-indigo-600'
+                  ? 'border-blue-500 text-blue-600'
                   : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
               }`}
             >
-              <Plus className="w-4 h-4 inline mr-2" />
-              Manage Templates
+              <Plus size={16} />
+              <span>Manage Templates</span>
             </button>
           </nav>
         </div>
-      </div>
 
-      {activeTab === 'generate' && (
-        <div className="space-y-6">
-          {/* Template Selection */}
-          <div className="bg-white p-6 rounded-lg shadow">
-            <h2 className="text-lg font-semibold mb-4">Select Template</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Notice Template
-                </label>
-                <select
-                  value={selectedTemplate}
-                  onChange={(e) => setSelectedTemplate(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                >
-                  <option value="">Select a template</option>
-                  {templates.map((template) => (
-                    <option key={template.id} value={template.id}>
-                      {template.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className="flex items-end space-x-2">
-                <button
-                  onClick={previewNotice}
-                  disabled={!selectedTemplate}
-                  className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
-                >
-                  <Eye className="w-4 h-4 mr-2" />
-                  Preview
-                </button>
-                <button
-                  onClick={() => setShowVariableHelp(true)}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center"
-                >
-                  <HelpCircle className="w-4 h-4 mr-2" />
-                  Variables
-                </button>
+        {activeTab === 'generate' && (
+          <div className="p-6 space-y-6">
+            {/* Template Selection */}
+            <div>
+              <h3 className="text-lg font-medium text-gray-900 mb-4">Select Template</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Notice Template
+                  </label>
+                  <select
+                    value={selectedTemplate}
+                    onChange={(e) => setSelectedTemplate(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    <option value="">Select a template</option>
+                    {templates.map((template) => (
+                      <option key={template.id} value={template.id}>
+                        {template.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="flex items-end space-x-2">
+                  <button
+                    onClick={previewNotice}
+                    disabled={!selectedTemplate}
+                    className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+                  >
+                    <Eye size={16} />
+                    <span>Preview</span>
+                  </button>
+                  <button
+                    onClick={() => setShowVariableHelp(true)}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center space-x-2"
+                  >
+                    <HelpCircle size={16} />
+                    <span>Variables</span>
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
 
-          {/* Notice Data Form */}
-          <div className="bg-white p-6 rounded-lg shadow">
-            <h2 className="text-lg font-semibold mb-4">Notice Information</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Survey Year
-                </label>
-                <input
-                  type="text"
-                  value={noticeData.surveyYear}
-                  onChange={(e) => setNoticeData({...noticeData, surveyYear: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Enterprise Name
-                </label>
-                <input
-                  type="text"
-                  value={noticeData.enterpriseName}
-                  onChange={(e) => setNoticeData({...noticeData, enterpriseName: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  GSTIN
-                </label>
-                <input
-                  type="text"
-                  value={noticeData.gstin}
-                  onChange={(e) => setNoticeData({...noticeData, gstin: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                />
-              </div>
-              <div className="md:col-span-2">
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Enterprise Address
-                </label>
-                <textarea
-                  value={noticeData.enterpriseAddress}
-                  onChange={(e) => setNoticeData({...noticeData, enterpriseAddress: e.target.value})}
-                  rows={2}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  DSL Number
-                </label>
-                <input
-                  type="text"
-                  value={noticeData.dslNumber}
-                  onChange={(e) => setNoticeData({...noticeData, dslNumber: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Sector
-                </label>
-                <input
-                  type="text"
-                  value={noticeData.sector}
-                  onChange={(e) => setNoticeData({...noticeData, sector: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Due Date
-                </label>
-                <input
-                  type="date"
-                  value={noticeData.dueDate}
-                  onChange={(e) => setNoticeData({...noticeData, dueDate: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Signatory Name
-                </label>
-                <input
-                  type="text"
-                  value={noticeData.signatoryName}
-                  onChange={(e) => setNoticeData({...noticeData, signatoryName: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Signatory Designation
-                </label>
-                <input
-                  type="text"
-                  value={noticeData.signatoryDesignation}
-                  onChange={(e) => setNoticeData({...noticeData, signatoryDesignation: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Contact Number
-                </label>
-                <input
-                  type="text"
-                  value={noticeData.contactNumber}
-                  onChange={(e) => setNoticeData({...noticeData, contactNumber: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Email Address
-                </label>
-                <input
-                  type="email"
-                  value={noticeData.emailAddress}
-                  onChange={(e) => setNoticeData({...noticeData, emailAddress: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Reference Number
-                </label>
-                <input
-                  type="text"
-                  value={noticeData.referenceNumber}
-                  onChange={(e) => setNoticeData({...noticeData, referenceNumber: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                />
+            {/* Notice Configuration */}
+            <div>
+              <h3 className="text-lg font-medium text-gray-900 mb-4">Notice Configuration</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Survey Year
+                  </label>
+                  <input
+                    type="text"
+                    value={noticeData.surveyYear}
+                    onChange={(e) => setNoticeData({...noticeData, surveyYear: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Due Date
+                  </label>
+                  <input
+                    type="date"
+                    value={noticeData.dueDate}
+                    onChange={(e) => setNoticeData({...noticeData, dueDate: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Reference Number
+                  </label>
+                  <input
+                    type="text"
+                    value={noticeData.referenceNumber}
+                    onChange={(e) => setNoticeData({...noticeData, referenceNumber: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Contact Number
+                  </label>
+                  <input
+                    type="text"
+                    value={noticeData.contactNumber}
+                    onChange={(e) => setNoticeData({...noticeData, contactNumber: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Email Address
+                  </label>
+                  <input
+                    type="email"
+                    value={noticeData.emailAddress}
+                    onChange={(e) => setNoticeData({...noticeData, emailAddress: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Signatory Designation
+                  </label>
+                  <input
+                    type="text"
+                    value={noticeData.signatoryDesignation}
+                    onChange={(e) => setNoticeData({...noticeData, signatoryDesignation: e.target.value})}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  />
+                </div>
               </div>
             </div>
-          </div>
 
-          {/* Generate Button */}
-          <div className="flex justify-end">
-            <button
-              onClick={generateNotice}
-              disabled={!selectedTemplate}
-              className="px-6 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
-            >
-              <Download className="w-4 h-4 mr-2" />
-              Generate Notice
-            </button>
-          </div>
-        </div>
-      )}
+            {/* Enterprise Selection */}
+            <div>
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-medium text-gray-900">Select Enterprises</h3>
+                <div className="flex items-center space-x-2 text-sm text-gray-600">
+                  <span>{selectedEnterprises.length} selected</span>
+                </div>
+              </div>
 
-      {activeTab === 'templates' && (
-        <div className="space-y-6">
-          {/* Create Template Button */}
-          <div className="flex justify-between items-center">
-            <h2 className="text-lg font-semibold">Notice Templates</h2>
-            <button
-              onClick={() => setShowCreateTemplate(true)}
-              className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 flex items-center"
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              Create Template
-            </button>
-          </div>
+              {/* Search and Filter */}
+              <div className="mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between space-y-4 sm:space-y-0">
+                <div className="relative flex-1 max-w-md">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="Search enterprises..."
+                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+                </div>
+                <div className="flex items-center space-x-4">
+                  <div className="flex items-center space-x-2">
+                    <Filter className="h-4 w-4 text-gray-400" />
+                    <select
+                      className="border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      value={filterSector}
+                      onChange={(e) => setFilterSector(e.target.value)}
+                    >
+                      <option value="all">All Sectors</option>
+                      <option value="Manufacturing">Manufacturing</option>
+                      <option value="Services">Services</option>
+                      <option value="Construction">Construction</option>
+                      <option value="Trade">Trade</option>
+                    </select>
+                  </div>
+                  <button
+                    onClick={handleSelectAll}
+                    className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors"
+                  >
+                    {selectedEnterprises.length === filteredEnterprises.length ? 'Deselect All' : 'Select All'}
+                  </button>
+                </div>
+              </div>
 
-          {/* Templates List */}
-          <div className="bg-white rounded-lg shadow overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
+              {/* Enterprises Table */}
+              <div className="border border-gray-200 rounded-lg overflow-hidden">
+                <table className="w-full">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left">
+                        <input
+                          type="checkbox"
+                          checked={selectedEnterprises.length > 0 && selectedEnterprises.length === filteredEnterprises.length}
+                          onChange={handleSelectAll}
+                          className="rounded"
+                        />
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Enterprise Details
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        GSTN
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        DSL Number
+                      </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Sector
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {filteredEnterprises.map((enterprise) => (
+                      <tr key={enterprise.id} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <input
+                            type="checkbox"
+                            checked={selectedEnterprises.includes(enterprise.id)}
+                            onChange={() => handleEnterpriseSelect(enterprise.id)}
+                            className="rounded"
+                          />
+                        </td>
+                        <td className="px-6 py-4">
+                          <div>
+                            <div className="text-sm font-medium text-gray-900">{enterprise.name}</div>
+                            <div className="text-sm text-gray-500">{enterprise.address}</div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm font-mono text-gray-900">{enterprise.gstn}</div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm font-mono text-gray-900">{enterprise.dslNumber}</div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-900">{enterprise.sector}</div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Generate Button */}
+            <div className="flex justify-end">
+              <button
+                onClick={generateNotices}
+                disabled={!selectedTemplate || selectedEnterprises.length === 0}
+                className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+              >
+                <Download size={16} />
+                <span>Generate Notice ({selectedEnterprises.length})</span>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'templates' && (
+          <div className="p-6 space-y-6">
+            {/* Create Template Button */}
+            <div className="flex justify-between items-center">
+              <h3 className="text-lg font-medium text-gray-900">Notice Templates</h3>
+              <button
+                onClick={() => setShowCreateTemplate(true)}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center space-x-2"
+              >
+                <Plus size={16} />
+                <span>Create Template</span>
+              </button>
+            </div>
+
+            {/* Templates List */}
+            <div className="border border-gray-200 rounded-lg overflow-hidden">
+              <table className="w-full">
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -478,7 +612,7 @@ National Sample Survey Office`;
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {templates.map((template) => (
-                    <tr key={template.id}>
+                    <tr key={template.id} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                         {template.name}
                       </td>
@@ -494,7 +628,7 @@ National Sample Survey Office`;
                             setSelectedTemplate(template.id);
                             setActiveTab('generate');
                           }}
-                          className="text-indigo-600 hover:text-indigo-900 mr-3"
+                          className="text-blue-600 hover:text-blue-800 mr-3"
                         >
                           Use Template
                         </button>
@@ -505,20 +639,20 @@ National Sample Survey Office`;
               </table>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Create Template Modal */}
       {showCreateTemplate && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-20 mx-auto p-5 border w-11/12 max-w-4xl shadow-lg rounded-md bg-white">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold">Create Notice Template</h3>
+              <h3 className="text-lg font-semibold text-gray-900">Create Notice Template</h3>
               <button
                 onClick={() => setShowCreateTemplate(false)}
                 className="text-gray-400 hover:text-gray-600"
               >
-                <X className="w-6 h-6" />
+                <X size={20} />
               </button>
             </div>
             
@@ -531,7 +665,7 @@ National Sample Survey Office`;
                   type="text"
                   value={newTemplate.name}
                   onChange={(e) => setNewTemplate({...newTemplate, name: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   placeholder="Enter template name"
                 />
               </div>
@@ -544,7 +678,7 @@ National Sample Survey Office`;
                   value={newTemplate.content}
                   onChange={(e) => setNewTemplate({...newTemplate, content: e.target.value})}
                   rows={15}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 font-mono text-sm"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono text-sm"
                   placeholder="Enter template content with variables in << >> format"
                 />
               </div>
@@ -552,24 +686,24 @@ National Sample Survey Office`;
               <div className="flex justify-between">
                 <button
                   onClick={() => setShowVariableHelp(true)}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center"
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center space-x-2"
                 >
-                  <HelpCircle className="w-4 h-4 mr-2" />
-                  View Variables
+                  <HelpCircle size={16} />
+                  <span>View Variables</span>
                 </button>
                 <div className="space-x-2">
                   <button
                     onClick={() => setShowCreateTemplate(false)}
-                    className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400"
+                    className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400"
                   >
                     Cancel
                   </button>
                   <button
                     onClick={saveTemplate}
-                    className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 flex items-center"
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center space-x-2"
                   >
-                    <Save className="w-4 h-4 mr-2" />
-                    Save Template
+                    <Save size={16} />
+                    <span>Save Template</span>
                   </button>
                 </div>
               </div>
@@ -580,19 +714,19 @@ National Sample Survey Office`;
 
       {/* Preview Modal */}
       {showPreview && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-20 mx-auto p-5 border w-11/12 max-w-4xl shadow-lg rounded-md bg-white">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold">Notice Preview</h3>
+              <h3 className="text-lg font-semibold text-gray-900">Notice Preview</h3>
               <button
                 onClick={() => setShowPreview(false)}
                 className="text-gray-400 hover:text-gray-600"
               >
-                <X className="w-6 h-6" />
+                <X size={20} />
               </button>
             </div>
             
-            <div className="bg-gray-50 p-4 rounded-md">
+            <div className="bg-gray-50 p-4 rounded-lg">
               <pre className="whitespace-pre-wrap text-sm font-mono">
                 {selectedTemplate ? substituteVariables(
                   templates.find(t => t.id === selectedTemplate)?.content || '',
@@ -604,7 +738,7 @@ National Sample Survey Office`;
             <div className="flex justify-end mt-4">
               <button
                 onClick={() => setShowPreview(false)}
-                className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400"
+                className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400"
               >
                 Close
               </button>
@@ -615,15 +749,15 @@ National Sample Survey Office`;
 
       {/* Variable Help Modal */}
       {showVariableHelp && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-          <div className="relative top-20 mx-auto p-5 border w-11/12 max-w-2xl shadow-lg rounded-md bg-white">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold">Available Variables</h3>
+              <h3 className="text-lg font-semibold text-gray-900">Available Variables</h3>
               <button
                 onClick={() => setShowVariableHelp(false)}
                 className="text-gray-400 hover:text-gray-600"
               >
-                <X className="w-6 h-6" />
+                <X size={20} />
               </button>
             </div>
             
@@ -643,7 +777,7 @@ National Sample Survey Office`;
             <div className="flex justify-end mt-4">
               <button
                 onClick={() => setShowVariableHelp(false)}
-                className="px-4 py-2 bg-gray-300 text-gray-700 rounded-md hover:bg-gray-400"
+                className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400"
               >
                 Close
               </button>
