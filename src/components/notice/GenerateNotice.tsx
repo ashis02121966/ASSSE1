@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { FileText, Plus, Eye, Download, Upload, Save, X, HelpCircle, Search, Filter } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
+import jsPDF from 'jspdf';
 
 interface NoticeTemplate {
   id: string;
@@ -256,6 +257,7 @@ National Sample Survey Office`;
       return;
     }
 
+    // Generate PDF for each selected enterprise
     selectedEnterprises.forEach(enterpriseId => {
       const enterprise = enterprises.find(e => e.id === enterpriseId);
       if (enterprise) {
@@ -270,22 +272,142 @@ National Sample Survey Office`;
 
         const finalContent = substituteVariables(template.content, enterpriseNoticeData);
         
-        // Create and download the notice
-        const blob = new Blob([finalContent], { type: 'text/plain' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `Notice_${enterprise.name.replace(/[^a-zA-Z0-9]/g, '_')}_${Date.now()}.txt`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
+        // Generate PDF
+        generatePDF(finalContent, enterprise.name, enterpriseNoticeData);
       }
     });
 
     alert(`Generated ${selectedEnterprises.length} notice(s) successfully!`);
   };
 
+  const generatePDF = (content: string, enterpriseName: string, data: NoticeData) => {
+    const pdf = new jsPDF('p', 'mm', 'a4');
+    
+    // Set font
+    pdf.setFont('helvetica', 'normal');
+    
+    // Add header
+    pdf.setFontSize(14);
+    pdf.setFont('helvetica', 'bold');
+    pdf.text('GOVERNMENT OF INDIA', 105, 20, { align: 'center' });
+    pdf.text('MINISTRY OF STATISTICS AND PROGRAMME IMPLEMENTATION', 105, 28, { align: 'center' });
+    pdf.text('NATIONAL SAMPLE SURVEY OFFICE', 105, 36, { align: 'center' });
+    
+    // Add some spacing
+    let yPosition = 50;
+    
+    // Process content line by line
+    const lines = content.split('\n');
+    pdf.setFont('helvetica', 'normal');
+    pdf.setFontSize(11);
+    
+    lines.forEach((line, index) => {
+      if (line.trim() === '') {
+        yPosition += 4; // Add spacing for empty lines
+        return;
+      }
+      
+      // Handle different line types
+      if (line.includes('GOVERNMENT OF INDIA') || 
+          line.includes('MINISTRY OF STATISTICS') || 
+          line.includes('NATIONAL SAMPLE SURVEY OFFICE')) {
+        // Skip header lines as we already added them
+        return;
+      }
+      
+      if (line.includes('Reference No:') || line.includes('Date:')) {
+        pdf.setFontSize(10);
+        pdf.text(line, 20, yPosition);
+        yPosition += 6;
+        return;
+      }
+      
+      if (line.includes('Subject:')) {
+        pdf.setFont('helvetica', 'bold');
+        pdf.setFontSize(11);
+        pdf.text(line, 20, yPosition);
+        pdf.setFont('helvetica', 'normal');
+        yPosition += 8;
+        return;
+      }
+      
+      if (line.includes('To,')) {
+        pdf.setFontSize(11);
+        pdf.text(line, 20, yPosition);
+        yPosition += 6;
+        return;
+      }
+      
+      // Handle enterprise details section
+      if (line.includes('Enterprise Details:')) {
+        pdf.setFont('helvetica', 'bold');
+        pdf.text(line, 20, yPosition);
+        pdf.setFont('helvetica', 'normal');
+        yPosition += 6;
+        return;
+      }
+      
+      // Handle bullet points and numbered lists
+      if (line.trim().match(/^[\d\-\•]/)) {
+        pdf.setFontSize(10);
+        const wrappedLines = pdf.splitTextToSize(line, 170);
+        wrappedLines.forEach((wrappedLine: string) => {
+          pdf.text(wrappedLine, 25, yPosition);
+          yPosition += 5;
+        });
+        yPosition += 2;
+        return;
+      }
+      
+      // Handle signature section
+      if (line.includes('Yours faithfully') || 
+          line.includes(data.signatoryName) || 
+          line.includes(data.signatoryDesignation)) {
+        yPosition += 10; // Add space before signature
+        pdf.text(line, 20, yPosition);
+        yPosition += 6;
+        
+        // Add signature image if user has one
+        if (line.includes(data.signatoryName) && user?.signatureImage) {
+          try {
+            // Add signature image above the name
+            pdf.addImage(user.signatureImage, 'PNG', 20, yPosition - 15, 40, 10);
+          } catch (error) {
+            console.warn('Could not add signature image:', error);
+          }
+        }
+        return;
+      }
+      
+      // Regular text lines
+      pdf.setFontSize(10);
+      const wrappedLines = pdf.splitTextToSize(line, 170);
+      wrappedLines.forEach((wrappedLine: string) => {
+        // Check if we need a new page
+        if (yPosition > 270) {
+          pdf.addPage();
+          yPosition = 20;
+        }
+        pdf.text(wrappedLine, 20, yPosition);
+        yPosition += 5;
+      });
+      yPosition += 2;
+    });
+    
+    // Add footer
+    const pageCount = pdf.getNumberOfPages();
+    for (let i = 1; i <= pageCount; i++) {
+      pdf.setPage(i);
+      pdf.setFontSize(8);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text(`Page ${i} of ${pageCount}`, 105, 290, { align: 'center' });
+      pdf.text('This is a computer generated notice', 105, 295, { align: 'center' });
+    }
+    
+    // Save the PDF
+    const fileName = `ASSSE_Notice_${enterpriseName.replace(/[^a-zA-Z0-9]/g, '_')}_${new Date().toISOString().split('T')[0]}.pdf`;
+    pdf.save(fileName);
+  };
   const previewNotice = () => {
     const template = templates.find(t => t.id === selectedTemplate);
     if (!template) {
@@ -568,10 +690,10 @@ National Sample Survey Office`;
               <button
                 onClick={generateNotices}
                 disabled={!selectedTemplate || selectedEnterprises.length === 0}
-                className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
+                className="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
               >
-                <Download size={16} />
-                <span>Generate Notice ({selectedEnterprises.length})</span>
+                <FileText size={16} />
+                <span>Generate PDF Notice ({selectedEnterprises.length})</span>
               </button>
             </div>
           </div>
