@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FileText, Plus, Eye, Download, Upload, Save, X, HelpCircle, Search, Filter } from 'lucide-react';
+import { FileText, Plus, Eye, Download, Upload, Save, X, HelpCircle, Search, Filter, Image, Trash2 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import jsPDF from 'jspdf';
 
@@ -7,8 +7,7 @@ interface NoticeTemplate {
   id: string;
   name: string;
   content: string;
-  language: string;
-  translations?: { [languageCode: string]: { name: string; content: string } };
+  images?: { [imageId: string]: { name: string; data: string; type: string } };
   createdAt: string;
   updatedAt: string;
 }
@@ -54,14 +53,6 @@ const GenerateNotice: React.FC = () => {
   const [filterSector, setFilterSector] = useState('all');
   
   const [newTemplate, setNewTemplate] = useState({
-    name: '',
-    content: '',
-    language: 'en'
-  });
-
-  const [newTranslation, setNewTranslation] = useState({
-    templateId: '',
-    language: '',
     name: '',
     content: ''
   });
@@ -118,53 +109,6 @@ const GenerateNotice: React.FC = () => {
       sector: 'Trade'
     }
   ];
-
-  // Supported languages
-  const supportedLanguages = [
-    { code: 'en', name: 'English', nativeName: 'English' },
-    { code: 'hi', name: 'Hindi', nativeName: 'हिंदी' },
-    { code: 'bn', name: 'Bengali', nativeName: 'বাংলা' },
-    { code: 'te', name: 'Telugu', nativeName: 'తెలుగు' },
-    { code: 'mr', name: 'Marathi', nativeName: 'मराठी' },
-    { code: 'ta', name: 'Tamil', nativeName: 'தமிழ்' },
-    { code: 'gu', name: 'Gujarati', nativeName: 'ગુજરાતી' },
-    { code: 'kn', name: 'Kannada', nativeName: 'ಕನ್ನಡ' },
-    { code: 'ml', name: 'Malayalam', nativeName: 'മലയാളം' },
-    { code: 'pa', name: 'Punjabi', nativeName: 'ਪੰਜਾਬੀ' },
-    { code: 'or', name: 'Odia', nativeName: 'ଓଡ଼ିଆ' },
-    { code: 'as', name: 'Assamese', nativeName: 'অসমীয়া' }
-  ];
-
-  const getLanguageName = (code: string) => {
-    const lang = supportedLanguages.find(l => l.code === code);
-    return lang ? `${lang.name} (${lang.nativeName})` : code;
-  };
-
-  const getTemplateContent = (template: NoticeTemplate, languageCode: string): string => {
-    if (template.language === languageCode) {
-      return template.content;
-    }
-    
-    if (template.translations && template.translations[languageCode]) {
-      return template.translations[languageCode].content;
-    }
-    
-    // Fallback to default language
-    return template.content;
-  };
-
-  const getTemplateName = (template: NoticeTemplate, languageCode: string): string => {
-    if (template.language === languageCode) {
-      return template.name;
-    }
-    
-    if (template.translations && template.translations[languageCode]) {
-      return template.translations[languageCode].name;
-    }
-    
-    // Fallback to default language
-    return template.name;
-  };
 
   const defaultTemplate = `GOVERNMENT OF INDIA
 MINISTRY OF STATISTICS AND PROGRAMME IMPLEMENTATION
@@ -228,7 +172,6 @@ National Sample Survey Office`;
       const defaultTemplateObj: NoticeTemplate = {
         id: 'default',
         name: 'ASSSE Survey Notice Template',
-        language: 'en',
         content: defaultTemplate,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
@@ -239,15 +182,14 @@ National Sample Survey Office`;
   }, []);
 
   const saveTemplate = () => {
-    if (!newTemplate.name.trim() || !newTemplate.content.trim()) {
-      alert('Please provide both template name and content');
+    if (!newTemplate.name.trim()) {
+      alert('Please provide template name');
       return;
     }
 
     const template: NoticeTemplate = {
       id: Date.now().toString(),
       name: newTemplate.name,
-      language: newTemplate.language,
       content: newTemplate.content,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
@@ -257,43 +199,65 @@ National Sample Survey Office`;
     setTemplates(updatedTemplates);
     localStorage.setItem('noticeTemplates', JSON.stringify(updatedTemplates));
     
-    setNewTemplate({ name: '', content: '', language: 'en' });
+    setNewTemplate({ name: '', content: '' });
     setShowCreateTemplate(false);
     alert('Template saved successfully!');
   };
 
-  const saveTranslation = () => {
-    if (!newTranslation.name.trim() || !newTranslation.content.trim() || !newTranslation.language) {
-      alert('Please provide translation name, content, and select a language');
+  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.match(/^image\/(jpeg|jpg|png|gif)$/)) {
+      alert('Please upload only JPEG, PNG, or GIF images');
       return;
     }
 
-    const templateIndex = templates.findIndex(t => t.id === newTranslation.templateId);
-    if (templateIndex === -1) {
-      alert('Template not found');
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      alert('Image file size should be less than 5MB');
       return;
     }
 
-    const updatedTemplates = [...templates];
-    const template = updatedTemplates[templateIndex];
-    
-    if (!template.translations) {
-      template.translations = {};
-    }
-    
-    template.translations[newTranslation.language] = {
-      name: newTranslation.name,
-      content: newTranslation.content
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const result = e.target?.result as string;
+      const imageId = `IMG_${Date.now()}`;
+      const imageTag = `<<IMAGE:${imageId}>>`;
+      
+      // Insert image tag at cursor position or end of content
+      const textarea = document.getElementById('template-content') as HTMLTextAreaElement;
+      if (textarea) {
+        const start = textarea.selectionStart;
+        const end = textarea.selectionEnd;
+        const currentContent = newTemplate.content;
+        const newContent = currentContent.substring(0, start) + imageTag + currentContent.substring(end);
+        
+        setNewTemplate(prev => ({
+          ...prev,
+          content: newContent
+        }));
+      } else {
+        setNewTemplate(prev => ({
+          ...prev,
+          content: prev.content + '\n' + imageTag
+        }));
+      }
+      
+      // Store image data (in real app, this would be uploaded to server)
+      const imageData = {
+        [imageId]: {
+          name: file.name,
+          data: result,
+          type: file.type
+        }
+      };
+      
+      // For now, store in component state (in real app, would be part of template)
+      console.log('Image uploaded:', imageData);
     };
-    
-    template.updatedAt = new Date().toISOString();
-    
-    setTemplates(updatedTemplates);
-    localStorage.setItem('noticeTemplates', JSON.stringify(updatedTemplates));
-    
-    setNewTranslation({ templateId: '', language: '', name: '', content: '' });
-    setShowAddTranslation(false);
-    alert('Translation added successfully!');
+    reader.readAsDataURL(file);
   };
 
   const substituteVariables = (content: string, data: NoticeData): string => {
@@ -352,7 +316,7 @@ National Sample Survey Office`;
       return;
     }
 
-    const templateContent = getTemplateContent(template, selectedLanguage);
+    const templateContent = template.content;
 
     // Generate PDF for each selected enterprise
     selectedEnterprises.forEach(enterpriseId => {
@@ -370,18 +334,18 @@ National Sample Survey Office`;
         const finalContent = substituteVariables(templateContent, enterpriseNoticeData);
         
         // Generate PDF
-        generatePDF(finalContent, enterprise.name, enterpriseNoticeData, selectedLanguage);
+        generatePDF(finalContent, enterprise.name, enterpriseNoticeData, template);
       }
     });
 
     alert(`Generated ${selectedEnterprises.length} notice(s) successfully!`);
   };
 
-  const generatePDF = (content: string, enterpriseName: string, data: NoticeData, language: string = 'en') => {
+  const generatePDF = (content: string, enterpriseName: string, data: NoticeData, template: NoticeTemplate) => {
     const pdf = new jsPDF('p', 'mm', 'a4');
     
-    // Set font based on language
-    const fontFamily = language === 'en' ? 'helvetica' : 'helvetica'; // For now using helvetica, can be extended for other fonts
+    // Set font
+    const fontFamily = 'helvetica';
     pdf.setFont(fontFamily, 'normal');
     
     const pageWidth = pdf.internal.pageSize.getWidth();
@@ -392,7 +356,7 @@ National Sample Survey Office`;
     
     // Function to add header on each page
     const addHeader = () => {
-      pdf.setFontSize(language === 'hi' ? 16 : 14); // Slightly larger for Hindi/Devanagari
+      pdf.setFontSize(14);
       pdf.setFont(fontFamily, 'bold');
       pdf.text('GOVERNMENT OF INDIA', pageWidth / 2, yPosition, { align: 'center' });
       yPosition += 8;
@@ -416,15 +380,33 @@ National Sample Survey Office`;
     
     // Process content line by line
     const lines = content.split('\n');
-    pdf.setFontSize(language === 'hi' ? 12 : 10); // Adjust font size for different languages
-    pdf.setFont(fontFamily, 'normal');
     pdf.setFontSize(10);
+    pdf.setFont(fontFamily, 'normal');
     
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
       
       if (line.trim() === '') {
         yPosition += 4;
+        continue;
+      }
+      
+      // Handle image placeholders
+      if (line.includes('<<IMAGE:')) {
+        const imageMatch = line.match(/<<IMAGE:([^>]+)>>/);
+        if (imageMatch && template.images && template.images[imageMatch[1]]) {
+          checkNewPage(30);
+          try {
+            const imageData = template.images[imageMatch[1]];
+            pdf.addImage(imageData.data, 'JPEG', margin, yPosition, 60, 20);
+            yPosition += 25;
+          } catch (error) {
+            console.warn('Could not add image:', error);
+            // Add placeholder text instead
+            pdf.text('[Image: ' + (template.images[imageMatch[1]]?.name || 'Unknown') + ']', margin, yPosition);
+            yPosition += 6;
+          }
+        }
         continue;
       }
       
@@ -613,23 +595,7 @@ National Sample Survey Office`;
                     <option value="">Select a template</option>
                     {templates.map((template) => (
                       <option key={template.id} value={template.id}>
-                        {getTemplateName(template, selectedLanguage)}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Language
-                  </label>
-                  <select
-                    value={selectedLanguage}
-                    onChange={(e) => setSelectedLanguage(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  >
-                    {supportedLanguages.map((lang) => (
-                      <option key={lang.code} value={lang.code}>
-                        {lang.name} ({lang.nativeName})
+                        {template.name}
                       </option>
                     ))}
                   </select>
@@ -859,13 +825,6 @@ National Sample Survey Office`;
                  <Plus size={16} />
                  <span>Create Template</span>
                </button>
-               <button
-                 onClick={() => setShowAddTranslation(true)}
-                 className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center space-x-2"
-               >
-                 <Plus size={16} />
-                 <span>Add Translation</span>
-               </button>
              </div>
             </div>
 
@@ -877,12 +836,9 @@ National Sample Survey Office`;
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Template Name
                     </th>
-                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                     Language
-                   </th>
-                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                     Translations
-                   </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Content Preview
+                    </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Created
                     </th>
@@ -900,12 +856,11 @@ National Sample Survey Office`;
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                         {template.name}
                       </td>
-                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                       {getLanguageName(template.language)}
-                     </td>
-                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                       {template.translations ? Object.keys(template.translations).length : 0} languages
-                     </td>
+                      <td className="px-6 py-4 text-sm text-gray-500 max-w-xs">
+                        <div className="truncate">
+                          {template.content.substring(0, 100)}...
+                        </div>
+                      </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         {new Date(template.createdAt).toLocaleDateString()}
                       </td>
@@ -960,50 +915,58 @@ National Sample Survey Office`;
                 />
               </div>
               
-             <div>
-               <label className="block text-sm font-medium text-gray-700 mb-1">
-                 Primary Language
-               </label>
-               <select
-                 value={newTemplate.language}
-                 onChange={(e) => setNewTemplate({...newTemplate, language: e.target.value})}
-                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-               >
-                 {supportedLanguages.map((lang) => (
-                   <option key={lang.code} value={lang.code}>
-                     {lang.name} ({lang.nativeName})
-                   </option>
-                 ))}
-               </select>
-             </div>
-             
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Template Content
-                </label>
+                <div className="flex justify-between items-center mb-2">
+                  <label className="block text-sm font-medium text-gray-700">
+                    Template Content (Supports Multiple Languages)
+                  </label>
+                  <div className="flex space-x-2">
+                    <label className="cursor-pointer bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700 inline-flex items-center space-x-1">
+                      <Image size={14} />
+                      <span>Add Image</span>
+                      <input
+                        type="file"
+                        accept=".jpg,.jpeg,.png,.gif"
+                        onChange={handleImageUpload}
+                        className="hidden"
+                      />
+                    </label>
+                    <button
+                      onClick={() => setShowVariableHelp(true)}
+                      className="bg-gray-600 text-white px-3 py-1 rounded text-sm hover:bg-gray-700 inline-flex items-center space-x-1"
+                    >
+                      <HelpCircle size={14} />
+                      <span>Variables</span>
+                    </button>
+                  </div>
+                </div>
+                <div className="text-xs text-gray-500 mb-2">
+                  You can type in multiple languages directly. Use variables like &lt;&lt;ENTERPRISE_NAME&gt;&gt; for dynamic content. Images can be inserted using the "Add Image" button.
+                </div>
                 <textarea
+                  id="template-content"
                   value={newTemplate.content}
                   onChange={(e) => setNewTemplate({...newTemplate, content: e.target.value})}
-                  rows={15}
-                 className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm ${
-                   newTemplate.language === 'en' ? 'font-mono' : ''
-                 }`}
-                  placeholder="Enter template content with variables in << >> format"
-                 style={{ 
-                   fontFamily: newTemplate.language === 'en' ? 'monospace' : 'inherit',
-                   direction: ['ar', 'ur'].includes(newTemplate.language) ? 'rtl' : 'ltr'
-                 }}
+                  rows={20}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                  placeholder="Enter template content with variables in << >> format. You can type in multiple languages directly in this text area."
+                  style={{ 
+                    fontFamily: 'inherit',
+                    lineHeight: '1.5'
+                  }}
                 />
               </div>
               
               <div className="flex justify-between">
-                <button
-                  onClick={() => setShowVariableHelp(true)}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center space-x-2"
-                >
-                  <HelpCircle size={16} />
-                  <span>View Variables</span>
-                </button>
+                <div className="space-x-2">
+                  <button
+                    onClick={() => setShowVariableHelp(true)}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center space-x-2"
+                  >
+                    <HelpCircle size={16} />
+                    <span>View Variables</span>
+                  </button>
+                </div>
                 <div className="space-x-2">
                   <button
                     onClick={() => setShowCreateTemplate(false)}
@@ -1017,118 +980,6 @@ National Sample Survey Office`;
                   >
                     <Save size={16} />
                     <span>Save Template</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Add Translation Modal */}
-      {showAddTranslation && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold text-gray-900">Add Translation</h3>
-              <button
-                onClick={() => setShowAddTranslation(false)}
-                className="text-gray-400 hover:text-gray-600"
-              >
-                <X size={20} />
-              </button>
-            </div>
-            
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Select Template
-                </label>
-                <select
-                  value={newTranslation.templateId}
-                  onChange={(e) => setNewTranslation({...newTranslation, templateId: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                >
-                  <option value="">Select a template to translate</option>
-                  {templates.map((template) => (
-                    <option key={template.id} value={template.id}>
-                      {template.name} ({getLanguageName(template.language)})
-                    </option>
-                  ))}
-                </select>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Translation Language
-                </label>
-                <select
-                  value={newTranslation.language}
-                  onChange={(e) => setNewTranslation({...newTranslation, language: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                >
-                  <option value="">Select language</option>
-                  {supportedLanguages.map((lang) => (
-                    <option key={lang.code} value={lang.code}>
-                      {lang.name} ({lang.nativeName})
-                    </option>
-                  ))}
-                </select>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Translated Template Name
-                </label>
-                <input
-                  type="text"
-                  value={newTranslation.name}
-                  onChange={(e) => setNewTranslation({...newTranslation, name: e.target.value})}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="Enter translated template name"
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Translated Content
-                </label>
-                <textarea
-                  value={newTranslation.content}
-                  onChange={(e) => setNewTranslation({...newTranslation, content: e.target.value})}
-                  rows={15}
-                  className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm ${
-                    newTranslation.language === 'en' ? 'font-mono' : ''
-                  }`}
-                  placeholder="Enter translated template content with variables in << >> format"
-                  style={{ 
-                    fontFamily: newTranslation.language === 'en' ? 'monospace' : 'inherit',
-                    direction: ['ar', 'ur'].includes(newTranslation.language) ? 'rtl' : 'ltr'
-                  }}
-                />
-              </div>
-              
-              <div className="flex justify-between">
-                <button
-                  onClick={() => setShowVariableHelp(true)}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center space-x-2"
-                >
-                  <HelpCircle size={16} />
-                  <span>View Variables</span>
-                </button>
-                <div className="space-x-2">
-                  <button
-                    onClick={() => setShowAddTranslation(false)}
-                    className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={saveTranslation}
-                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center space-x-2"
-                  >
-                    <Save size={16} />
-                    <span>Save Translation</span>
                   </button>
                 </div>
               </div>
@@ -1152,12 +1003,11 @@ National Sample Survey Office`;
             </div>
             
             <div className="bg-gray-50 p-4 rounded-lg">
-              <pre className="whitespace-pre-wrap text-sm font-mono">
+              <pre className="whitespace-pre-wrap text-sm" style={{ fontFamily: 'inherit', lineHeight: '1.5' }}>
                 {selectedTemplate ? (() => {
                   const template = templates.find(t => t.id === selectedTemplate);
                   if (template) {
-                    const content = getTemplateContent(template, selectedLanguage);
-                    return substituteVariables(content, noticeData);
+                    return substituteVariables(template.content, noticeData);
                   }
                   return '';
                 })() : ''}
@@ -1190,16 +1040,35 @@ National Sample Survey Office`;
               </button>
             </div>
             
-            <div className="space-y-2">
-              <p className="text-sm text-gray-600 mb-4">
-                Use these variables in your template by wrapping them with &lt;&lt; and &gt;&gt;
-              </p>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                {variables.map((variable) => (
-                  <div key={variable} className="bg-gray-50 p-2 rounded text-sm font-mono">
-                    &lt;&lt;{variable}&gt;&gt;
-                  </div>
-                ))}
+            <div className="space-y-4">
+              <div>
+                <p className="text-sm text-gray-600 mb-4">
+                  Use these variables in your template by wrapping them with &lt;&lt; and &gt;&gt;
+                </p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                  {variables.map((variable) => (
+                    <div key={variable} className="bg-gray-50 p-2 rounded text-sm font-mono">
+                      &lt;&lt;{variable}&gt;&gt;
+                    </div>
+                  ))}
+                </div>
+              </div>
+              
+              <div className="border-t pt-4">
+                <h4 className="font-medium text-gray-900 mb-2">Image Support</h4>
+                <p className="text-sm text-gray-600 mb-2">
+                  You can insert images in your template using the "Add Image" button. Images will be inserted as:
+                </p>
+                <div className="bg-gray-50 p-2 rounded text-sm font-mono">
+                  &lt;&lt;IMAGE:IMG_123456789&gt;&gt;
+                </div>
+              </div>
+              
+              <div className="border-t pt-4">
+                <h4 className="font-medium text-gray-900 mb-2">Multilingual Support</h4>
+                <p className="text-sm text-gray-600">
+                  You can type directly in multiple languages in the template content area. The system supports all Indian languages and will preserve the formatting in the generated PDF notices.
+                </p>
               </div>
             </div>
             
