@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { FileText, Plus, Eye, Download, Upload, Save, X, HelpCircle, Search, Filter, Image, Trash2 } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
+import { mockUsers } from '../../data/mockData';
 import jsPDF from 'jspdf';
 
 interface NoticeTemplate {
@@ -66,13 +67,18 @@ const GenerateNotice: React.FC = () => {
     sector: '',
     dueDate: '',
     signatoryName: user?.name || '',
-    signatoryDesignation: 'Regional Officer',
+    signatoryDesignation: '',
     contactNumber: '',
     emailAddress: '',
     surveyType: 'Annual Survey of Service Sector Enterprises (ASSSE)',
     referenceNumber: '',
     issueDate: new Date().toISOString().split('T')[0]
   });
+
+  // Get RO users for signatory dropdown
+  const roUsers = mockUsers.filter(user => 
+    user.roles.some(role => role.code === 'RO_USER')
+  );
 
   // Mock enterprises data
   const enterprises: Enterprise[] = [
@@ -484,7 +490,17 @@ National Sample Survey Office`;
         yPosition += 6;
         
         // Add signature image if user has one
-        if (line.includes(data.signatoryName) && user?.signatureImage) {
+        if (line.includes(data.signatoryName)) {
+          const selectedUser = roUsers.find(u => u.name === data.signatoryName);
+          if (selectedUser?.signatureImage) {
+            try {
+              checkNewPage(15);
+              pdf.addImage(selectedUser.signatureImage, 'PNG', margin, yPosition - 15, 40, 10);
+            } catch (error) {
+              console.warn('Could not add signature image:', error);
+            }
+          }
+        } else if (line.includes(data.signatoryName) && user?.signatureImage) {
           try {
             checkNewPage(15);
             pdf.addImage(user.signatureImage, 'PNG', margin, yPosition - 15, 40, 10);
@@ -681,14 +697,27 @@ National Sample Survey Office`;
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Signatory Designation
+                    Signatory User
                   </label>
-                  <input
-                    type="text"
-                    value={noticeData.signatoryDesignation}
-                    onChange={(e) => setNoticeData({...noticeData, signatoryDesignation: e.target.value})}
+                  <select
+                    value={noticeData.signatoryName}
+                    onChange={(e) => {
+                      const selectedUser = roUsers.find(u => u.name === e.target.value);
+                      setNoticeData({
+                        ...noticeData, 
+                        signatoryName: e.target.value,
+                        signatoryDesignation: selectedUser ? 'Regional Officer' : ''
+                      });
+                    }}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  />
+                  >
+                    <option value="">Select RO User</option>
+                    {roUsers.map((roUser) => (
+                      <option key={roUser.id} value={roUser.name}>
+                        {roUser.name} ({roUser.email})
+                      </option>
+                    ))}
+                  </select>
                 </div>
               </div>
             </div>
