@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, Edit, Trash2, Search, Filter, Eye, X, Save, UserPlus } from 'lucide-react';
+import { Plus, Edit, Trash2, Search, Filter, Eye, X, Save, UserPlus, Upload, Image } from 'lucide-react';
 import { userRoles, officeTypes } from '../../data/mockData';
 import { OfficeType, UserRole } from '../../types';
 
@@ -13,6 +13,7 @@ interface User {
   profileImage?: string;
   officeType?: string;
   officeLocation?: string;
+  signatureImage?: string;
 }
 
 const UserManagement: React.FC = () => {
@@ -76,7 +77,8 @@ const UserManagement: React.FC = () => {
     roles: [],
     status: 'Active',
     officeType: '',
-    officeLocation: ''
+    officeLocation: '',
+    signatureImage: ''
   });
 
   // Get available roles based on selected office type
@@ -117,7 +119,10 @@ const UserManagement: React.FC = () => {
       name: '',
       email: '',
       roles: [],
-      status: 'Active'
+      status: 'Active',
+      officeType: '',
+      officeLocation: '',
+      signatureImage: ''
     });
     setShowAddModal(false);
   };
@@ -173,6 +178,42 @@ const UserManagement: React.FC = () => {
           ? [...prev.roles, roleName]
           : prev.roles.filter(r => r !== roleName)
       }) : null);
+    }
+  };
+
+  const handleSignatureUpload = (event: React.ChangeEvent<HTMLInputElement>, target: 'new' | 'edit') => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.match(/^image\/(jpeg|jpg|png)$/)) {
+      alert('Please upload only JPEG or PNG files for signature');
+      return;
+    }
+
+    // Validate file size (max 2MB)
+    if (file.size > 2 * 1024 * 1024) {
+      alert('Signature file size should be less than 2MB');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const result = e.target?.result as string;
+      if (target === 'new') {
+        setNewUser(prev => ({ ...prev, signatureImage: result }));
+      } else if (selectedUser) {
+        setSelectedUser(prev => prev ? ({ ...prev, signatureImage: result }) : null);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const removeSignature = (target: 'new' | 'edit') => {
+    if (target === 'new') {
+      setNewUser(prev => ({ ...prev, signatureImage: '' }));
+    } else if (selectedUser) {
+      setSelectedUser(prev => prev ? ({ ...prev, signatureImage: '' }) : null);
     }
   };
 
@@ -581,6 +622,94 @@ const UserManagement: React.FC = () => {
               </div>
 
               <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Digital Signature
+                </label>
+                <div className="space-y-3">
+                  {selectedUser.signatureImage ? (
+                    <div className="border border-gray-300 rounded-lg p-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm font-medium text-gray-700">Current Signature:</span>
+                        <button
+                          type="button"
+                          onClick={() => removeSignature('edit')}
+                          className="text-red-600 hover:text-red-800 p-1 rounded"
+                          title="Remove Signature"
+                        >
+                          <X size={16} />
+                        </button>
+                      </div>
+                      <img
+                        src={selectedUser.signatureImage}
+                        alt="Signature"
+                        className="max-w-full h-20 object-contain border border-gray-200 rounded"
+                      />
+                    </div>
+                  ) : (
+                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
+                      <Image className="mx-auto h-8 w-8 text-gray-400 mb-2" />
+                      <p className="text-sm text-gray-600 mb-2">Upload signature image</p>
+                      <label className="cursor-pointer bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700 inline-flex items-center space-x-1">
+                        <Upload size={14} />
+                        <span>Choose File</span>
+                        <input
+                          type="file"
+                          accept=".jpg,.jpeg,.png"
+                          onChange={(e) => handleSignatureUpload(e, 'edit')}
+                          className="hidden"
+                        />
+                      </label>
+                      <p className="text-xs text-gray-500 mt-1">JPEG or PNG format, max 2MB</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Digital Signature
+                </label>
+                <div className="space-y-3">
+                  {newUser.signatureImage ? (
+                    <div className="border border-gray-300 rounded-lg p-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm font-medium text-gray-700">Current Signature:</span>
+                        <button
+                          type="button"
+                          onClick={() => removeSignature('new')}
+                          className="text-red-600 hover:text-red-800 p-1 rounded"
+                          title="Remove Signature"
+                        >
+                          <X size={16} />
+                        </button>
+                      </div>
+                      <img
+                        src={newUser.signatureImage}
+                        alt="Signature"
+                        className="max-w-full h-20 object-contain border border-gray-200 rounded"
+                      />
+                    </div>
+                  ) : (
+                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
+                      <Image className="mx-auto h-8 w-8 text-gray-400 mb-2" />
+                      <p className="text-sm text-gray-600 mb-2">Upload signature image</p>
+                      <label className="cursor-pointer bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700 inline-flex items-center space-x-1">
+                        <Upload size={14} />
+                        <span>Choose File</span>
+                        <input
+                          type="file"
+                          accept=".jpg,.jpeg,.png"
+                          onChange={(e) => handleSignatureUpload(e, 'new')}
+                          className="hidden"
+                        />
+                      </label>
+                      <p className="text-xs text-gray-500 mt-1">JPEG or PNG format, max 2MB</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Office Location
                 </label>
@@ -679,6 +808,21 @@ const UserManagement: React.FC = () => {
                 </div>
               </div>
               
+              {selectedUser?.signatureImage && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Digital Signature
+                  </label>
+                  <div className="p-2 bg-gray-50 rounded">
+                    <img
+                      src={selectedUser.signatureImage}
+                      alt="Signature"
+                      className="max-w-full h-16 object-contain border border-gray-200 rounded"
+                    />
+                  </div>
+                </div>
+              )}
+              
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -698,12 +842,12 @@ const UserManagement: React.FC = () => {
             <div className="mt-6 flex justify-end">
               <button
                 onClick={() => {
-                <p className="text-sm text-gray-900 p-2 bg-gray-50 rounded">{selectedUser?.officeType || 'Not Set'}</p>
+                  setShowViewModal(false);
                   setSelectedUser(null);
                 }}
                 className="px-4 py-2 bg-gray-600 text-white rounded-md text-sm font-medium hover:bg-gray-700"
               >
-                <p className="text-sm text-gray-900 p-2 bg-gray-50 rounded">{selectedUser?.officeLocation || 'Not Set'}</p>
+                Close
               </button>
             </div>
           </div>

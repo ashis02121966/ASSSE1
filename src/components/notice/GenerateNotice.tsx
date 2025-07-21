@@ -1,11 +1,27 @@
 import React, { useState } from 'react';
-import { FileOutput, Download, Send, CheckSquare, Calendar, User } from 'lucide-react';
+import { FileOutput, Download, Send, CheckSquare, Calendar, User, Plus, Edit, Eye, X, Save, FileText } from 'lucide-react';
+
+interface NoticeTemplate {
+  id: string;
+  name: string;
+  content: string;
+  isDefault: boolean;
+  createdBy: string;
+  createdAt: string;
+}
 
 const GenerateNotice: React.FC = () => {
   const [selectedFrames, setSelectedFrames] = useState<string[]>([]);
   const [noticeTemplate, setNoticeTemplate] = useState('default');
   const [signatory, setSignatory] = useState('ro-user');
   const [selectAll, setSelectAll] = useState(false);
+  const [showTemplateModal, setShowTemplateModal] = useState(false);
+  const [showCreateTemplate, setShowCreateTemplate] = useState(false);
+  const [selectedTemplateForView, setSelectedTemplateForView] = useState<NoticeTemplate | null>(null);
+  const [newTemplate, setNewTemplate] = useState({
+    name: '',
+    content: ''
+  });
 
   const frames = [
     { id: '1', fileName: 'ASI_Frame_2023_Manufacturing.xlsx', sector: 'Manufacturing', enterprises: 1250, status: 'allocated' },
@@ -13,10 +29,107 @@ const GenerateNotice: React.FC = () => {
     { id: '3', fileName: 'ASI_Frame_2023_Construction.xlsx', sector: 'Construction', enterprises: 670, status: 'allocated' },
   ];
 
-  const templates = [
-    { id: 'default', name: 'Default Notice Template', description: 'Standard survey notice template' },
-    { id: 'urgent', name: 'Urgent Notice Template', description: 'For time-sensitive surveys' },
-    { id: 'reminder', name: 'Reminder Notice Template', description: 'Follow-up notice template' },
+  const [templates, setTemplates] = useState<NoticeTemplate[]>([
+    { 
+      id: 'default', 
+      name: 'Default Notice Template', 
+      content: `GOVERNMENT OF INDIA
+MINISTRY OF STATISTICS AND PROGRAMME IMPLEMENTATION
+NATIONAL STATISTICAL OFFICE
+ECONOMIC STATISTICS DIVISION
+
+NOTICE
+
+Subject: Annual Survey of Service Sector Enterprises (ASSSE) for the year <<SURVEY_YEAR>>
+
+Dear Sir/Madam,
+
+This is to inform you that your enterprise "<<ENTERPRISE_NAME>>" having GSTIN <<GSTIN>> located at <<ENTERPRISE_ADDRESS>> has been selected for the Annual Survey of Service Sector Enterprises (ASSSE) for the year <<SURVEY_YEAR>>.
+
+The survey is being conducted under the Collection of Statistics Act, 2008. Your cooperation in providing the required information is mandatory under this Act.
+
+Survey Details:
+- Survey Period: <<SURVEY_PERIOD>>
+- DSL Number: <<DSL_NUMBER>>
+- Sector: <<SECTOR>>
+- Due Date: <<DUE_DATE>>
+
+You are requested to:
+1. Fill the survey schedule completely and accurately
+2. Submit the filled schedule within <<SUBMISSION_DAYS>> days from the date of this notice
+3. Provide all supporting documents as required
+4. Cooperate with the survey officials during the data collection process
+
+For any queries or clarifications, please contact:
+<<CONTACT_PERSON>>
+<<CONTACT_DESIGNATION>>
+Phone: <<CONTACT_PHONE>>
+Email: <<CONTACT_EMAIL>>
+
+Your cooperation is highly appreciated.
+
+Yours faithfully,
+
+<<SIGNATORY_NAME>>
+<<SIGNATORY_DESIGNATION>>
+<<OFFICE_ADDRESS>>
+
+Date: <<NOTICE_DATE>>
+Place: <<PLACE>>`,
+      isDefault: true,
+      createdBy: 'System',
+      createdAt: '2024-01-01'
+    },
+    { 
+      id: 'urgent', 
+      name: 'Urgent Notice Template', 
+      content: `URGENT NOTICE
+
+GOVERNMENT OF INDIA
+MINISTRY OF STATISTICS AND PROGRAMME IMPLEMENTATION
+NATIONAL STATISTICAL OFFICE
+
+Subject: URGENT - Annual Survey of Service Sector Enterprises (ASSSE) for the year <<SURVEY_YEAR>>
+
+Dear Sir/Madam,
+
+This is an URGENT notice regarding your enterprise "<<ENTERPRISE_NAME>>" (GSTIN: <<GSTIN>>) for the Annual Survey of Service Sector Enterprises.
+
+IMMEDIATE ACTION REQUIRED:
+- Survey must be completed within <<SUBMISSION_DAYS>> days
+- Non-compliance may result in penalties under Collection of Statistics Act, 2008
+
+Contact immediately: <<CONTACT_PHONE>>
+
+<<SIGNATORY_NAME>>
+<<SIGNATORY_DESIGNATION>>
+Date: <<NOTICE_DATE>>`,
+      isDefault: false,
+      createdBy: 'Admin User',
+      createdAt: '2024-01-10'
+    },
+    { 
+      id: 'reminder', 
+      name: 'Reminder Notice Template', 
+      content: `REMINDER NOTICE
+
+Subject: Reminder - Annual Survey of Service Sector Enterprises (ASSSE)
+
+Dear Sir/Madam,
+
+This is a reminder that your enterprise "<<ENTERPRISE_NAME>>" has not yet submitted the required survey information.
+
+Original Due Date: <<ORIGINAL_DUE_DATE>>
+Extended Due Date: <<DUE_DATE>>
+
+Please submit immediately to avoid penalties.
+
+<<SIGNATORY_NAME>>
+<<SIGNATORY_DESIGNATION>>`,
+      isDefault: false,
+      createdBy: 'RO User',
+      createdAt: '2024-01-15'
+    }
   ];
 
   const signatories = [
@@ -24,6 +137,57 @@ const GenerateNotice: React.FC = () => {
     { id: 'ad-user', name: 'Assistant Director', designation: 'AD, ENSD' },
     { id: 'dd-user', name: 'Deputy Director', designation: 'DD, ENSD' },
   ];
+
+  const handleCreateTemplate = () => {
+    if (!newTemplate.name || !newTemplate.content) {
+      alert('Please provide template name and content');
+      return;
+    }
+
+    const templateId = `template-${Date.now()}`;
+    const template: NoticeTemplate = {
+      id: templateId,
+      name: newTemplate.name,
+      content: newTemplate.content,
+      isDefault: false,
+      createdBy: 'Current User', // In real app, this would be from auth context
+      createdAt: new Date().toISOString().split('T')[0]
+    };
+
+    setTemplates([...templates, template]);
+    setNewTemplate({ name: '', content: '' });
+    setShowCreateTemplate(false);
+    alert('Template created successfully!');
+  };
+
+  const handleViewTemplate = (template: NoticeTemplate) => {
+    setSelectedTemplateForView(template);
+    setShowTemplateModal(true);
+  };
+
+  const getVariableHelp = () => {
+    return [
+      '<<SURVEY_YEAR>> - Current survey year',
+      '<<ENTERPRISE_NAME>> - Name of the enterprise',
+      '<<GSTIN>> - Enterprise GSTIN number',
+      '<<ENTERPRISE_ADDRESS>> - Enterprise address',
+      '<<SURVEY_PERIOD>> - Survey period dates',
+      '<<DSL_NUMBER>> - DSL number from frame',
+      '<<SECTOR>> - Enterprise sector',
+      '<<DUE_DATE>> - Survey submission due date',
+      '<<SUBMISSION_DAYS>> - Number of days for submission',
+      '<<CONTACT_PERSON>> - Contact person name',
+      '<<CONTACT_DESIGNATION>> - Contact person designation',
+      '<<CONTACT_PHONE>> - Contact phone number',
+      '<<CONTACT_EMAIL>> - Contact email address',
+      '<<SIGNATORY_NAME>> - Name of signatory authority',
+      '<<SIGNATORY_DESIGNATION>> - Designation of signatory',
+      '<<OFFICE_ADDRESS>> - Office address',
+      '<<NOTICE_DATE>> - Date of notice generation',
+      '<<PLACE>> - Place of notice generation',
+      '<<ORIGINAL_DUE_DATE>> - Original due date (for reminders)'
+    ];
+  };
 
   const generatedNotices = [
     { id: '1', frameId: '1', enterpriseName: 'ABC Manufacturing Ltd.', generatedDate: '2024-01-15', status: 'sent' },
@@ -318,20 +482,43 @@ startxref
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Notice Template
                 </label>
-                <select
-                  value={noticeTemplate}
-                  onChange={(e) => setNoticeTemplate(e.target.value)}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                >
-                  {templates.map((template) => (
-                    <option key={template.id} value={template.id}>
-                      {template.name}
-                    </option>
-                  ))}
-                </select>
-                <p className="text-xs text-gray-500 mt-1">
-                  {templates.find(t => t.id === noticeTemplate)?.description}
-                </p>
+                <div className="space-y-2">
+                  <div className="flex items-center space-x-2">
+                    <select
+                      value={noticeTemplate}
+                      onChange={(e) => setNoticeTemplate(e.target.value)}
+                      className="flex-1 border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    >
+                      {templates.map((template) => (
+                        <option key={template.id} value={template.id}>
+                          {template.name}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      onClick={() => {
+                        const template = templates.find(t => t.id === noticeTemplate);
+                        if (template) handleViewTemplate(template);
+                      }}
+                      className="p-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                      title="Preview Template"
+                    >
+                      <Eye size={16} />
+                    </button>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs text-gray-500">
+                      Created by: {templates.find(t => t.id === noticeTemplate)?.createdBy}
+                    </p>
+                    <button
+                      onClick={() => setShowCreateTemplate(true)}
+                      className="text-blue-600 hover:text-blue-800 text-xs flex items-center space-x-1"
+                    >
+                      <Plus size={12} />
+                      <span>Create Template</span>
+                    </button>
+                  </div>
+                </div>
               </div>
 
               <div>
@@ -398,6 +585,194 @@ startxref
           </div>
         </div>
       </div>
+
+      {/* Create Template Modal */}
+      {showCreateTemplate && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">Create Notice Template</h3>
+              <button 
+                onClick={() => setShowCreateTemplate(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Template Form */}
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Template Name *
+                  </label>
+                  <input
+                    type="text"
+                    value={newTemplate.name}
+                    onChange={(e) => setNewTemplate({ ...newTemplate, name: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="Enter template name"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Template Content *
+                  </label>
+                  <textarea
+                    value={newTemplate.content}
+                    onChange={(e) => setNewTemplate({ ...newTemplate, content: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    rows={20}
+                    placeholder="Enter template content with variables..."
+                  />
+                </div>
+              </div>
+
+              {/* Variable Help */}
+              <div className="space-y-4">
+                <div>
+                  <h4 className="font-medium text-gray-900 mb-3">Available Variables</h4>
+                  <div className="bg-gray-50 rounded-lg p-4 max-h-96 overflow-y-auto">
+                    <p className="text-sm text-gray-600 mb-3">
+                      Use these variables in your template. They will be replaced with actual values when generating notices:
+                    </p>
+                    <div className="space-y-1">
+                      {getVariableHelp().map((variable, index) => (
+                        <div key={index} className="text-xs font-mono bg-white p-2 rounded border">
+                          {variable}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <h5 className="font-medium text-blue-900 mb-2">Template Guidelines</h5>
+                  <ul className="text-sm text-blue-800 space-y-1">
+                    <li>• Use variables within &lt;&lt; &gt;&gt; brackets</li>
+                    <li>• Include signatory information at the end</li>
+                    <li>• Maintain official government format</li>
+                    <li>• Test template before using in production</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-6 flex justify-end space-x-3">
+              <button
+                onClick={() => setShowCreateTemplate(false)}
+                className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleCreateTemplate}
+                disabled={!newTemplate.name || !newTemplate.content}
+                className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed flex items-center space-x-2"
+              >
+                <Save size={16} />
+                <span>Create Template</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* View Template Modal */}
+      {showTemplateModal && selectedTemplateForView && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">Template Preview: {selectedTemplateForView.name}</h3>
+              <button 
+                onClick={() => {
+                  setShowTemplateModal(false);
+                  setSelectedTemplateForView(null);
+                }}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Template Content */}
+              <div>
+                <h4 className="font-medium text-gray-900 mb-3">Template Content</h4>
+                <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 max-h-96 overflow-y-auto">
+                  <pre className="text-sm text-gray-800 whitespace-pre-wrap font-mono">
+                    {selectedTemplateForView.content}
+                  </pre>
+                </div>
+              </div>
+
+              {/* Sample Preview */}
+              <div>
+                <h4 className="font-medium text-gray-900 mb-3">Sample Preview</h4>
+                <div className="bg-white border border-gray-200 rounded-lg p-4 max-h-96 overflow-y-auto">
+                  <pre className="text-sm text-gray-800 whitespace-pre-wrap">
+                    {selectedTemplateForView.content
+                      .replace(/<<SURVEY_YEAR>>/g, '2023-24')
+                      .replace(/<<ENTERPRISE_NAME>>/g, 'ABC Manufacturing Ltd.')
+                      .replace(/<<GSTIN>>/g, '27AABCU9603R1ZX')
+                      .replace(/<<ENTERPRISE_ADDRESS>>/g, '123 Industrial Area, Mumbai - 400001')
+                      .replace(/<<SURVEY_PERIOD>>/g, 'April 2023 to March 2024')
+                      .replace(/<<DSL_NUMBER>>/g, 'DSL001')
+                      .replace(/<<SECTOR>>/g, 'Manufacturing')
+                      .replace(/<<DUE_DATE>>/g, '31st March 2024')
+                      .replace(/<<SUBMISSION_DAYS>>/g, '30')
+                      .replace(/<<CONTACT_PERSON>>/g, 'Regional Officer')
+                      .replace(/<<CONTACT_DESIGNATION>>/g, 'RO, ENSD')
+                      .replace(/<<CONTACT_PHONE>>/g, '+91-11-23456789')
+                      .replace(/<<CONTACT_EMAIL>>/g, 'ro@ensd.gov.in')
+                      .replace(/<<SIGNATORY_NAME>>/g, 'Current User Name')
+                      .replace(/<<SIGNATORY_DESIGNATION>>/g, 'Regional Officer')
+                      .replace(/<<OFFICE_ADDRESS>>/g, 'Regional Office, New Delhi')
+                      .replace(/<<NOTICE_DATE>>/g, new Date().toLocaleDateString('en-IN'))
+                      .replace(/<<PLACE>>/g, 'New Delhi')
+                      .replace(/<<ORIGINAL_DUE_DATE>>/g, '15th March 2024')
+                    }
+                  </pre>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-6 bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+              <h5 className="font-medium text-yellow-800 mb-2">Template Information</h5>
+              <div className="grid grid-cols-2 gap-4 text-sm text-yellow-700">
+                <div>Created by: {selectedTemplateForView.createdBy}</div>
+                <div>Created on: {selectedTemplateForView.createdAt}</div>
+                <div>Type: {selectedTemplateForView.isDefault ? 'System Default' : 'Custom'}</div>
+                <div>Status: Active</div>
+              </div>
+            </div>
+
+            <div className="mt-6 flex justify-end space-x-3">
+              <button
+                onClick={() => {
+                  setShowTemplateModal(false);
+                  setSelectedTemplateForView(null);
+                }}
+                className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
+              >
+                Close
+              </button>
+              <button
+                onClick={() => {
+                  setNoticeTemplate(selectedTemplateForView.id);
+                  setShowTemplateModal(false);
+                  setSelectedTemplateForView(null);
+                }}
+                className="px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700"
+              >
+                Use This Template
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

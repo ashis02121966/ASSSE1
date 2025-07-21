@@ -5,6 +5,7 @@ export interface User {
   roles: UserRole[];
   permissions: string[];
   profileImage?: string;
+  signatureImage?: string;
 }
 
 export interface UserRole {
