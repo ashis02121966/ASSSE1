@@ -107,7 +107,7 @@ const UserManagement: React.FC = () => {
     const userWithId: User = {
         status: 'Active',
         officeType: '',
-        officeLocation: ''
+        officeLocation: '',
       id: userId,
       lastLogin: new Date().toISOString().split('T')[0]
     };
