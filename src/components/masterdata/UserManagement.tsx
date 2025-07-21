@@ -262,20 +262,6 @@ const UserManagement: React.FC = () => {
             <input
               type="text"
               placeholder="Search users..."
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Office Type
-                </label>
-                <p className="text-sm text-gray-900 p-2 bg-gray-50 rounded">{selectedUser.officeType || 'Not Set'}</p>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Office Location
-                </label>
-                <p className="text-sm text-gray-900 p-2 bg-gray-50 rounded">{selectedUser.officeLocation || 'Not Set'}</p>
-              </div>
               className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
