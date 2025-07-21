@@ -283,116 +283,148 @@ National Sample Survey Office`;
   const generatePDF = (content: string, enterpriseName: string, data: NoticeData) => {
     const pdf = new jsPDF('p', 'mm', 'a4');
     
-    // Set font
+    // Set default font and margins
     pdf.setFont('helvetica', 'normal');
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+    const margin = 20;
+    const maxWidth = pageWidth - (margin * 2);
+    let yPosition = margin;
     
-    // Add header
-    pdf.setFontSize(14);
-    pdf.setFont('helvetica', 'bold');
-    pdf.text('GOVERNMENT OF INDIA', 105, 20, { align: 'center' });
-    pdf.text('MINISTRY OF STATISTICS AND PROGRAMME IMPLEMENTATION', 105, 28, { align: 'center' });
-    pdf.text('NATIONAL SAMPLE SURVEY OFFICE', 105, 36, { align: 'center' });
+    // Function to add header on each page
+    const addHeader = () => {
+      pdf.setFontSize(14);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('GOVERNMENT OF INDIA', pageWidth / 2, yPosition, { align: 'center' });
+      yPosition += 8;
+      pdf.text('MINISTRY OF STATISTICS AND PROGRAMME IMPLEMENTATION', pageWidth / 2, yPosition, { align: 'center' });
+      yPosition += 8;
+      pdf.text('NATIONAL SAMPLE SURVEY OFFICE', pageWidth / 2, yPosition, { align: 'center' });
+      yPosition += 15;
+    };
     
-    // Add some spacing
-    let yPosition = 50;
+    // Function to check if new page is needed
+    const checkNewPage = (requiredSpace: number = 10) => {
+      if (yPosition + requiredSpace > pageHeight - 30) {
+        pdf.addPage();
+        yPosition = margin;
+        addHeader();
+      }
+    };
+    
+    // Add initial header
+    addHeader();
     
     // Process content line by line
     const lines = content.split('\n');
+    pdf.setFontSize(14);
     pdf.setFont('helvetica', 'normal');
-    pdf.setFontSize(11);
+    pdf.setFontSize(10);
     
-    lines.forEach((line, index) => {
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      
       if (line.trim() === '') {
-        yPosition += 4; // Add spacing for empty lines
-        return;
+        yPosition += 4;
+        continue;
       }
       
-      // Handle different line types
+      // Skip header lines as we already added them
       if (line.includes('GOVERNMENT OF INDIA') || 
           line.includes('MINISTRY OF STATISTICS') || 
           line.includes('NATIONAL SAMPLE SURVEY OFFICE')) {
-        // Skip header lines as we already added them
-        return;
+        continue;
       }
       
+      // Handle reference and date lines
       if (line.includes('Reference No:') || line.includes('Date:')) {
+        checkNewPage(8);
         pdf.setFontSize(10);
-        pdf.text(line, 20, yPosition);
+        pdf.text(line, margin, yPosition);
         yPosition += 6;
-        return;
+        continue;
       }
       
+      // Handle subject line
       if (line.includes('Subject:')) {
+        checkNewPage(10);
         pdf.setFont('helvetica', 'bold');
         pdf.setFontSize(11);
-        pdf.text(line, 20, yPosition);
+        const wrappedSubject = pdf.splitTextToSize(line, maxWidth);
+        wrappedSubject.forEach((wrappedLine: string) => {
+          pdf.text(wrappedLine, margin, yPosition);
+          yPosition += 6;
+        });
         pdf.setFont('helvetica', 'normal');
-        yPosition += 8;
-        return;
+        yPosition += 4;
+        continue;
       }
       
+      // Handle "To," line
       if (line.includes('To,')) {
+        checkNewPage(8);
         pdf.setFontSize(11);
-        pdf.text(line, 20, yPosition);
+        pdf.text(line, margin, yPosition);
         yPosition += 6;
-        return;
+        continue;
       }
       
       // Handle enterprise details section
       if (line.includes('Enterprise Details:')) {
+        checkNewPage(8);
         pdf.setFont('helvetica', 'bold');
-        pdf.text(line, 20, yPosition);
+        pdf.text(line, margin, yPosition);
         pdf.setFont('helvetica', 'normal');
         yPosition += 6;
-        return;
+        continue;
       }
       
       // Handle bullet points and numbered lists
       if (line.trim().match(/^[\d\-\•]/)) {
+        checkNewPage(8);
         pdf.setFontSize(10);
-        const wrappedLines = pdf.splitTextToSize(line, 170);
+        const wrappedLines = pdf.splitTextToSize(line, maxWidth - 10);
         wrappedLines.forEach((wrappedLine: string) => {
-          pdf.text(wrappedLine, 25, yPosition);
+          checkNewPage(6);
+          pdf.text(wrappedLine, margin + 5, yPosition);
           yPosition += 5;
         });
         yPosition += 2;
-        return;
+        continue;
       }
       
       // Handle signature section
       if (line.includes('Yours faithfully') || 
           line.includes(data.signatoryName) || 
           line.includes(data.signatoryDesignation)) {
-        yPosition += 10; // Add space before signature
-        pdf.text(line, 20, yPosition);
+        checkNewPage(25); // Ensure enough space for signature
+        yPosition += 10;
+        pdf.text(line, margin, yPosition);
         yPosition += 6;
         
         // Add signature image if user has one
         if (line.includes(data.signatoryName) && user?.signatureImage) {
           try {
-            // Add signature image above the name
-            pdf.addImage(user.signatureImage, 'PNG', 20, yPosition - 15, 40, 10);
+            checkNewPage(15);
+            pdf.addImage(user.signatureImage, 'PNG', margin, yPosition - 15, 40, 10);
           } catch (error) {
             console.warn('Could not add signature image:', error);
           }
         }
-        return;
+        continue;
       }
       
       // Regular text lines
+      checkNewPage(8);
       pdf.setFontSize(10);
-      const wrappedLines = pdf.splitTextToSize(line, 170);
+      const wrappedLines = pdf.splitTextToSize(line, maxWidth);
       wrappedLines.forEach((wrappedLine: string) => {
-        // Check if we need a new page
-        if (yPosition > 270) {
-          pdf.addPage();
-          yPosition = 20;
-        }
-        pdf.text(wrappedLine, 20, yPosition);
+        checkNewPage(6);
+        pdf.text(wrappedLine, margin, yPosition);
         yPosition += 5;
       });
       yPosition += 2;
-    });
+    }
     
     // Add footer
     const pageCount = pdf.getNumberOfPages();
@@ -400,8 +432,8 @@ National Sample Survey Office`;
       pdf.setPage(i);
       pdf.setFontSize(8);
       pdf.setFont('helvetica', 'normal');
-      pdf.text(`Page ${i} of ${pageCount}`, 105, 290, { align: 'center' });
-      pdf.text('This is a computer generated notice', 105, 295, { align: 'center' });
+      pdf.text(`Page ${i} of ${pageCount}`, pageWidth / 2, pageHeight - 15, { align: 'center' });
+      pdf.text('This is a computer generated notice', pageWidth / 2, pageHeight - 10, { align: 'center' });
     }
     
     // Save the PDF
