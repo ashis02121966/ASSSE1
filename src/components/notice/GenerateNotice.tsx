@@ -7,6 +7,8 @@ interface NoticeTemplate {
   id: string;
   name: string;
   content: string;
+  language: string;
+  translations?: { [languageCode: string]: { name: string; content: string } };
   createdAt: string;
   updatedAt: string;
 }
@@ -41,15 +43,25 @@ const GenerateNotice: React.FC = () => {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState<'generate' | 'templates'>('generate');
   const [selectedTemplate, setSelectedTemplate] = useState<string>('');
+  const [selectedLanguage, setSelectedLanguage] = useState<string>('en');
   const [templates, setTemplates] = useState<NoticeTemplate[]>([]);
   const [showCreateTemplate, setShowCreateTemplate] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [showVariableHelp, setShowVariableHelp] = useState(false);
+  const [showAddTranslation, setShowAddTranslation] = useState(false);
   const [selectedEnterprises, setSelectedEnterprises] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterSector, setFilterSector] = useState('all');
   
   const [newTemplate, setNewTemplate] = useState({
+    name: '',
+    content: '',
+    language: 'en'
+  });
+
+  const [newTranslation, setNewTranslation] = useState({
+    templateId: '',
+    language: '',
     name: '',
     content: ''
   });
@@ -106,6 +118,53 @@ const GenerateNotice: React.FC = () => {
       sector: 'Trade'
     }
   ];
+
+  // Supported languages
+  const supportedLanguages = [
+    { code: 'en', name: 'English', nativeName: 'English' },
+    { code: 'hi', name: 'Hindi', nativeName: 'हिंदी' },
+    { code: 'bn', name: 'Bengali', nativeName: 'বাংলা' },
+    { code: 'te', name: 'Telugu', nativeName: 'తెలుగు' },
+    { code: 'mr', name: 'Marathi', nativeName: 'मराठी' },
+    { code: 'ta', name: 'Tamil', nativeName: 'தமிழ்' },
+    { code: 'gu', name: 'Gujarati', nativeName: 'ગુજરાતી' },
+    { code: 'kn', name: 'Kannada', nativeName: 'ಕನ್ನಡ' },
+    { code: 'ml', name: 'Malayalam', nativeName: 'മലയാളം' },
+    { code: 'pa', name: 'Punjabi', nativeName: 'ਪੰਜਾਬੀ' },
+    { code: 'or', name: 'Odia', nativeName: 'ଓଡ଼ିଆ' },
+    { code: 'as', name: 'Assamese', nativeName: 'অসমীয়া' }
+  ];
+
+  const getLanguageName = (code: string) => {
+    const lang = supportedLanguages.find(l => l.code === code);
+    return lang ? `${lang.name} (${lang.nativeName})` : code;
+  };
+
+  const getTemplateContent = (template: NoticeTemplate, languageCode: string): string => {
+    if (template.language === languageCode) {
+      return template.content;
+    }
+    
+    if (template.translations && template.translations[languageCode]) {
+      return template.translations[languageCode].content;
+    }
+    
+    // Fallback to default language
+    return template.content;
+  };
+
+  const getTemplateName = (template: NoticeTemplate, languageCode: string): string => {
+    if (template.language === languageCode) {
+      return template.name;
+    }
+    
+    if (template.translations && template.translations[languageCode]) {
+      return template.translations[languageCode].name;
+    }
+    
+    // Fallback to default language
+    return template.name;
+  };
 
   const defaultTemplate = `GOVERNMENT OF INDIA
 MINISTRY OF STATISTICS AND PROGRAMME IMPLEMENTATION
@@ -169,6 +228,7 @@ National Sample Survey Office`;
       const defaultTemplateObj: NoticeTemplate = {
         id: 'default',
         name: 'ASSSE Survey Notice Template',
+        language: 'en',
         content: defaultTemplate,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
@@ -187,6 +247,7 @@ National Sample Survey Office`;
     const template: NoticeTemplate = {
       id: Date.now().toString(),
       name: newTemplate.name,
+      language: newTemplate.language,
       content: newTemplate.content,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
@@ -196,9 +257,43 @@ National Sample Survey Office`;
     setTemplates(updatedTemplates);
     localStorage.setItem('noticeTemplates', JSON.stringify(updatedTemplates));
     
-    setNewTemplate({ name: '', content: '' });
+    setNewTemplate({ name: '', content: '', language: 'en' });
     setShowCreateTemplate(false);
     alert('Template saved successfully!');
+  };
+
+  const saveTranslation = () => {
+    if (!newTranslation.name.trim() || !newTranslation.content.trim() || !newTranslation.language) {
+      alert('Please provide translation name, content, and select a language');
+      return;
+    }
+
+    const templateIndex = templates.findIndex(t => t.id === newTranslation.templateId);
+    if (templateIndex === -1) {
+      alert('Template not found');
+      return;
+    }
+
+    const updatedTemplates = [...templates];
+    const template = updatedTemplates[templateIndex];
+    
+    if (!template.translations) {
+      template.translations = {};
+    }
+    
+    template.translations[newTranslation.language] = {
+      name: newTranslation.name,
+      content: newTranslation.content
+    };
+    
+    template.updatedAt = new Date().toISOString();
+    
+    setTemplates(updatedTemplates);
+    localStorage.setItem('noticeTemplates', JSON.stringify(updatedTemplates));
+    
+    setNewTranslation({ templateId: '', language: '', name: '', content: '' });
+    setShowAddTranslation(false);
+    alert('Translation added successfully!');
   };
 
   const substituteVariables = (content: string, data: NoticeData): string => {
@@ -257,6 +352,8 @@ National Sample Survey Office`;
       return;
     }
 
+    const templateContent = getTemplateContent(template, selectedLanguage);
+
     // Generate PDF for each selected enterprise
     selectedEnterprises.forEach(enterpriseId => {
       const enterprise = enterprises.find(e => e.id === enterpriseId);
@@ -270,21 +367,23 @@ National Sample Survey Office`;
           sector: enterprise.sector
         };
 
-        const finalContent = substituteVariables(template.content, enterpriseNoticeData);
+        const finalContent = substituteVariables(templateContent, enterpriseNoticeData);
         
         // Generate PDF
-        generatePDF(finalContent, enterprise.name, enterpriseNoticeData);
+        generatePDF(finalContent, enterprise.name, enterpriseNoticeData, selectedLanguage);
       }
     });
 
     alert(`Generated ${selectedEnterprises.length} notice(s) successfully!`);
   };
 
-  const generatePDF = (content: string, enterpriseName: string, data: NoticeData) => {
+  const generatePDF = (content: string, enterpriseName: string, data: NoticeData, language: string = 'en') => {
     const pdf = new jsPDF('p', 'mm', 'a4');
     
-    // Set default font and margins
-    pdf.setFont('helvetica', 'normal');
+    // Set font based on language
+    const fontFamily = language === 'en' ? 'helvetica' : 'helvetica'; // For now using helvetica, can be extended for other fonts
+    pdf.setFont(fontFamily, 'normal');
+    
     const pageWidth = pdf.internal.pageSize.getWidth();
     const pageHeight = pdf.internal.pageSize.getHeight();
     const margin = 20;
@@ -293,8 +392,8 @@ National Sample Survey Office`;
     
     // Function to add header on each page
     const addHeader = () => {
-      pdf.setFontSize(14);
-      pdf.setFont('helvetica', 'bold');
+      pdf.setFontSize(language === 'hi' ? 16 : 14); // Slightly larger for Hindi/Devanagari
+      pdf.setFont(fontFamily, 'bold');
       pdf.text('GOVERNMENT OF INDIA', pageWidth / 2, yPosition, { align: 'center' });
       yPosition += 8;
       pdf.text('MINISTRY OF STATISTICS AND PROGRAMME IMPLEMENTATION', pageWidth / 2, yPosition, { align: 'center' });
@@ -317,8 +416,8 @@ National Sample Survey Office`;
     
     // Process content line by line
     const lines = content.split('\n');
-    pdf.setFontSize(14);
-    pdf.setFont('helvetica', 'normal');
+    pdf.setFontSize(language === 'hi' ? 12 : 10); // Adjust font size for different languages
+    pdf.setFont(fontFamily, 'normal');
     pdf.setFontSize(10);
     
     for (let i = 0; i < lines.length; i++) {
@@ -501,7 +600,7 @@ National Sample Survey Office`;
             {/* Template Selection */}
             <div>
               <h3 className="text-lg font-medium text-gray-900 mb-4">Select Template</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Notice Template
@@ -514,7 +613,23 @@ National Sample Survey Office`;
                     <option value="">Select a template</option>
                     {templates.map((template) => (
                       <option key={template.id} value={template.id}>
-                        {template.name}
+                        {getTemplateName(template, selectedLanguage)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Language
+                  </label>
+                  <select
+                    value={selectedLanguage}
+                    onChange={(e) => setSelectedLanguage(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  >
+                    {supportedLanguages.map((lang) => (
+                      <option key={lang.code} value={lang.code}>
+                        {lang.name} ({lang.nativeName})
                       </option>
                     ))}
                   </select>
@@ -736,13 +851,22 @@ National Sample Survey Office`;
             {/* Create Template Button */}
             <div className="flex justify-between items-center">
               <h3 className="text-lg font-medium text-gray-900">Notice Templates</h3>
-              <button
-                onClick={() => setShowCreateTemplate(true)}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center space-x-2"
-              >
-                <Plus size={16} />
-                <span>Create Template</span>
-              </button>
+             <div className="flex space-x-2">
+               <button
+                 onClick={() => setShowCreateTemplate(true)}
+                 className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center space-x-2"
+               >
+                 <Plus size={16} />
+                 <span>Create Template</span>
+               </button>
+               <button
+                 onClick={() => setShowAddTranslation(true)}
+                 className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center space-x-2"
+               >
+                 <Plus size={16} />
+                 <span>Add Translation</span>
+               </button>
+             </div>
             </div>
 
             {/* Templates List */}
@@ -753,6 +877,12 @@ National Sample Survey Office`;
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Template Name
                     </th>
+                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                     Language
+                   </th>
+                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                     Translations
+                   </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Created
                     </th>
@@ -770,6 +900,12 @@ National Sample Survey Office`;
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                         {template.name}
                       </td>
+                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                       {getLanguageName(template.language)}
+                     </td>
+                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                       {template.translations ? Object.keys(template.translations).length : 0} languages
+                     </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                         {new Date(template.createdAt).toLocaleDateString()}
                       </td>
@@ -824,6 +960,23 @@ National Sample Survey Office`;
                 />
               </div>
               
+             <div>
+               <label className="block text-sm font-medium text-gray-700 mb-1">
+                 Primary Language
+               </label>
+               <select
+                 value={newTemplate.language}
+                 onChange={(e) => setNewTemplate({...newTemplate, language: e.target.value})}
+                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+               >
+                 {supportedLanguages.map((lang) => (
+                   <option key={lang.code} value={lang.code}>
+                     {lang.name} ({lang.nativeName})
+                   </option>
+                 ))}
+               </select>
+             </div>
+             
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Template Content
@@ -832,8 +985,14 @@ National Sample Survey Office`;
                   value={newTemplate.content}
                   onChange={(e) => setNewTemplate({...newTemplate, content: e.target.value})}
                   rows={15}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 font-mono text-sm"
+                 className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm ${
+                   newTemplate.language === 'en' ? 'font-mono' : ''
+                 }`}
                   placeholder="Enter template content with variables in << >> format"
+                 style={{ 
+                   fontFamily: newTemplate.language === 'en' ? 'monospace' : 'inherit',
+                   direction: ['ar', 'ur'].includes(newTemplate.language) ? 'rtl' : 'ltr'
+                 }}
                 />
               </div>
               
@@ -866,6 +1025,118 @@ National Sample Survey Office`;
         </div>
       )}
 
+      {/* Add Translation Modal */}
+      {showAddTranslation && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold text-gray-900">Add Translation</h3>
+              <button
+                onClick={() => setShowAddTranslation(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Select Template
+                </label>
+                <select
+                  value={newTranslation.templateId}
+                  onChange={(e) => setNewTranslation({...newTranslation, templateId: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="">Select a template to translate</option>
+                  {templates.map((template) => (
+                    <option key={template.id} value={template.id}>
+                      {template.name} ({getLanguageName(template.language)})
+                    </option>
+                  ))}
+                </select>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Translation Language
+                </label>
+                <select
+                  value={newTranslation.language}
+                  onChange={(e) => setNewTranslation({...newTranslation, language: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                >
+                  <option value="">Select language</option>
+                  {supportedLanguages.map((lang) => (
+                    <option key={lang.code} value={lang.code}>
+                      {lang.name} ({lang.nativeName})
+                    </option>
+                  ))}
+                </select>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Translated Template Name
+                </label>
+                <input
+                  type="text"
+                  value={newTranslation.name}
+                  onChange={(e) => setNewTranslation({...newTranslation, name: e.target.value})}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  placeholder="Enter translated template name"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Translated Content
+                </label>
+                <textarea
+                  value={newTranslation.content}
+                  onChange={(e) => setNewTranslation({...newTranslation, content: e.target.value})}
+                  rows={15}
+                  className={`w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm ${
+                    newTranslation.language === 'en' ? 'font-mono' : ''
+                  }`}
+                  placeholder="Enter translated template content with variables in << >> format"
+                  style={{ 
+                    fontFamily: newTranslation.language === 'en' ? 'monospace' : 'inherit',
+                    direction: ['ar', 'ur'].includes(newTranslation.language) ? 'rtl' : 'ltr'
+                  }}
+                />
+              </div>
+              
+              <div className="flex justify-between">
+                <button
+                  onClick={() => setShowVariableHelp(true)}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center space-x-2"
+                >
+                  <HelpCircle size={16} />
+                  <span>View Variables</span>
+                </button>
+                <div className="space-x-2">
+                  <button
+                    onClick={() => setShowAddTranslation(false)}
+                    className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={saveTranslation}
+                    className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center space-x-2"
+                  >
+                    <Save size={16} />
+                    <span>Save Translation</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Preview Modal */}
       {showPreview && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -882,10 +1153,14 @@ National Sample Survey Office`;
             
             <div className="bg-gray-50 p-4 rounded-lg">
               <pre className="whitespace-pre-wrap text-sm font-mono">
-                {selectedTemplate ? substituteVariables(
-                  templates.find(t => t.id === selectedTemplate)?.content || '',
-                  noticeData
-                ) : ''}
+                {selectedTemplate ? (() => {
+                  const template = templates.find(t => t.id === selectedTemplate);
+                  if (template) {
+                    const content = getTemplateContent(template, selectedLanguage);
+                    return substituteVariables(content, noticeData);
+                  }
+                  return '';
+                })() : ''}
               </pre>
             </div>
             
