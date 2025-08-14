@@ -5,15 +5,14 @@ import { MenuItem } from '../../types';
 import { useAuth } from '../../hooks/useAuth';
 
 interface SidebarProps {
-  menuItems: MenuItem[];
   currentPath: string;
   onNavigate: (path: string) => void;
   isCollapsed: boolean;
   onToggleCollapse: () => void;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ menuItems, currentPath, onNavigate, isCollapsed, onToggleCollapse }) => {
-  const { user, hasRole } = useAuth();
+const Sidebar: React.FC<SidebarProps> = ({ currentPath, onNavigate, isCollapsed, onToggleCollapse }) => {
+  const { user, hasRole, userMenuItems } = useAuth();
   const [expandedItems, setExpandedItems] = useState<string[]>([]);
 
   const toggleExpanded = (itemId: string) => {
@@ -99,7 +98,7 @@ const Sidebar: React.FC<SidebarProps> = ({ menuItems, currentPath, onNavigate, i
         </button>
       </div>
       <nav className="mt-4">
-        {menuItems.map(item => renderMenuItem(item))}
+        {userMenuItems.map(item => renderMenuItem(item))}
       </nav>
     </div>
   );

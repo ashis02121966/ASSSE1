@@ -2,8 +2,11 @@ import React, { useState } from 'react';
 import { Plus, Edit, Trash2, Search, Filter, Eye, Save, X, Check } from 'lucide-react';
 import { userRoles, officeTypes } from '../../data/mockData';
 import { UserRole } from '../../types';
+import { RoleService } from '../../services/roleService';
+import { useAuth } from '../../hooks/useAuth';
 
 const RoleManagement: React.FC = () => {
+  const { loadUserMenuItems, user } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingRole, setEditingRole] = useState<UserRole | null>(null);
@@ -27,6 +30,12 @@ const RoleManagement: React.FC = () => {
     };
     
     setRoles([...roles, roleWithId]);
+    
+    // Refresh current user's menu items if they have admin role
+    if (user?.id) {
+      loadUserMenuItems(user.id);
+    }
+    
     setNewRole({
       id: '',
       name: '',
@@ -44,12 +53,25 @@ const RoleManagement: React.FC = () => {
     );
     
     setRoles(updatedRoles);
+    
+    // Refresh current user's menu items if they have admin role
+    if (user?.id) {
+      loadUserMenuItems(user.id);
+    }
+    
     setEditingRole(null);
   };
 
   const handleDeleteRole = (id: string) => {
-    const updatedRoles = roles.filter(role => role.id !== id);
-    setRoles(updatedRoles);
+    if (confirm('Are you sure you want to delete this role? This will affect all users with this role.')) {
+      const updatedRoles = roles.filter(role => role.id !== id);
+      setRoles(updatedRoles);
+      
+      // Refresh current user's menu items
+      if (user?.id) {
+        loadUserMenuItems(user.id);
+      }
+    }
   };
 
   const filteredRoles = roles.filter(role => 

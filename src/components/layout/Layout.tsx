@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import Header from './Header';
 import Sidebar from './Sidebar';
-import { menuItems } from '../../data/mockData';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -21,7 +20,6 @@ const Layout: React.FC<LayoutProps> = ({ children, currentPage, onNavigate }) =>
       <Header />
       <div className="flex">
         <Sidebar
-          menuItems={menuItems}
           currentPath={currentPage}
           onNavigate={onNavigate}
           isCollapsed={isSidebarCollapsed}

@@ -19,7 +19,7 @@ import ApprovalWorkflowManagement from './components/masterdata/ApprovalWorkflow
 import { Loader2 } from 'lucide-react';
 
 function App() {
-  const { user, loading, login } = useAuth();
+  const { user, loading, login, userMenuItems } = useAuth();
   const [currentPage, setCurrentPage] = useState('/dashboard');
 
   if (loading) {

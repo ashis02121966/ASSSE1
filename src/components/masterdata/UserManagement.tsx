@@ -2,6 +2,8 @@ import React, { useState } from 'react';
 import { Plus, Edit, Trash2, Search, Filter, Eye, X, Save, UserPlus, Upload, Image } from 'lucide-react';
 import { userRoles, officeTypes } from '../../data/mockData';
 import { OfficeType, UserRole } from '../../types';
+import { UserService } from '../../services/userService';
+import { useAuth } from '../../hooks/useAuth';
 
 interface User {
   id: string;
@@ -17,6 +19,7 @@ interface User {
 }
 
 const UserManagement: React.FC = () => {
+  const { loadUserMenuItems } = useAuth();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterRole, setFilterRole] = useState('all');
   const [filterOfficeType, setFilterOfficeType] = useState('all');
@@ -107,14 +110,18 @@ const UserManagement: React.FC = () => {
 
     const userId = `user-${Date.now()}`;
     const userWithId: User = {
-        status: 'Active',
-        officeType: '',
-        officeLocation: '',
+      ...newUser,
       id: userId,
       lastLogin: new Date().toISOString().split('T')[0]
     };
     
     setUsers([...users, userWithId]);
+    
+    // Refresh menu items for all users to reflect role changes
+    if (userWithId.id) {
+      loadUserMenuItems(userWithId.id);
+    }
+    
     setNewUser({
       name: '',
       email: '',
@@ -142,6 +149,12 @@ const UserManagement: React.FC = () => {
     setUsers(users.map(user => 
       user.id === selectedUser.id ? selectedUser : user
     ));
+    
+    // Refresh menu items for the updated user
+    if (selectedUser.id) {
+      loadUserMenuItems(selectedUser.id);
+    }
+    
     setShowEditModal(false);
     setSelectedUser(null);
   };

@@ -1,14 +1,37 @@
 import React, { useState, useEffect } from 'react';
 import { Save, Check, X, ChevronDown, ChevronRight } from 'lucide-react';
-import { userRoles, menuItems, rolePermissions } from '../../data/mockData';
+import { userRoles } from '../../data/mockData';
 import { MenuItem, RolePermission, UserRole } from '../../types';
+import { RolePermissionService } from '../../services/rolePermissionService';
 
 const RoleMenuAccess: React.FC = () => {
   const [selectedRole, setSelectedRole] = useState<string>(userRoles[0]?.id || '');
   const [expandedMenus, setExpandedMenus] = useState<string[]>([]);
-  const [permissions, setPermissions] = useState<RolePermission[]>(rolePermissions);
+  const [permissions, setPermissions] = useState<RolePermission[]>([]);
+  const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
+  const [loading, setLoading] = useState(true);
   const [unsavedChanges, setUnsavedChanges] = useState(false);
 
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    try {
+      setLoading(true);
+      const [permissionsData, menuItemsData] = await Promise.all([
+        RolePermissionService.getRolePermissions(),
+        RolePermissionService.getAllMenuItems()
+      ]);
+      
+      setPermissions(permissionsData);
+      setMenuItems(menuItemsData);
+    } catch (error) {
+      console.error('Failed to load RBAC data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
   const toggleExpanded = (menuId: string) => {
     setExpandedMenus(prev =>
       prev.includes(menuId)
@@ -22,54 +45,92 @@ const RoleMenuAccess: React.FC = () => {
   };
 
   const handlePermissionChange = (menuId: string, field: 'canView' | 'canCreate' | 'canEdit' | 'canDelete', value: boolean) => {
-    const existingPermIndex = permissions.findIndex(p => p.roleId === selectedRole && p.menuId === menuId);
-    
-    if (existingPermIndex >= 0) {
-      // Update existing permission
-      const updatedPermissions = [...permissions];
-      updatedPermissions[existingPermIndex] = {
-        ...updatedPermissions[existingPermIndex],
-        [field]: value
-      };
+    setPermissions(prev => {
+      const existingPermIndex = prev.findIndex(p => p.roleId === selectedRole && p.menuId === menuId);
       
-      // If canView is set to false, set all other permissions to false as well
-      if (field === 'canView' && value === false) {
-        updatedPermissions[existingPermIndex].canCreate = false;
-        updatedPermissions[existingPermIndex].canEdit = false;
-        updatedPermissions[existingPermIndex].canDelete = false;
+      if (existingPermIndex >= 0) {
+        // Update existing permission
+        const updatedPermissions = [...prev];
+        updatedPermissions[existingPermIndex] = {
+          ...updatedPermissions[existingPermIndex],
+          [field]: value
+        };
+        
+        // If canView is set to false, set all other permissions to false as well
+        if (field === 'canView' && value === false) {
+          updatedPermissions[existingPermIndex].canCreate = false;
+          updatedPermissions[existingPermIndex].canEdit = false;
+          updatedPermissions[existingPermIndex].canDelete = false;
+        }
+        
+        // If any other permission is set to true, ensure canView is also true
+        if (field !== 'canView' && value === true) {
+          updatedPermissions[existingPermIndex].canView = true;
+        }
+        
+        return updatedPermissions;
+      } else {
+        // Create new permission
+        const newPermission: RolePermission = {
+          id: `${selectedRole}-${menuId}-${Date.now()}`,
+          roleId: selectedRole,
+          menuId: menuId,
+          canView: field === 'canView' ? value : field !== 'canView' && value,
+          canCreate: field === 'canCreate' ? value : false,
+          canEdit: field === 'canEdit' ? value : false,
+          canDelete: field === 'canDelete' ? value : false
+        };
+        
+        return [...prev, newPermission];
       }
-      
-      // If any other permission is set to true, ensure canView is also true
-      if (field !== 'canView' && value === true) {
-        updatedPermissions[existingPermIndex].canView = true;
-      }
-      
-      setPermissions(updatedPermissions);
-    } else {
-      // Create new permission
-      const newPermission: RolePermission = {
-        id: `${selectedRole}-${menuId}-${Date.now()}`,
-        roleId: selectedRole,
-        menuId: menuId,
-        canView: field === 'canView' ? value : field !== 'canView' && value,
-        canCreate: field === 'canCreate' ? value : false,
-        canEdit: field === 'canEdit' ? value : false,
-        canDelete: field === 'canDelete' ? value : false
-      };
-      
-      setPermissions([...permissions, newPermission]);
-    }
+    });
     
     setUnsavedChanges(true);
   };
 
-  const handleSaveChanges = () => {
-    // In a real application, this would save to the backend
-    console.log('Saving permissions:', permissions);
-    setUnsavedChanges(false);
-    alert('Role menu access permissions saved successfully!');
+  const handleSaveChanges = async () => {
+    try {
+      setLoading(true);
+      
+      // Save all permissions for the selected role
+      const rolePermissions = permissions.filter(p => p.roleId === selectedRole);
+      
+      for (const permission of rolePermissions) {
+        await RolePermissionService.upsertRolePermission({
+          roleId: permission.roleId,
+          menuId: permission.menuId,
+          canView: permission.canView,
+          canCreate: permission.canCreate,
+          canEdit: permission.canEdit,
+          canDelete: permission.canDelete
+        });
+      }
+      
+      setUnsavedChanges(false);
+      alert('Role menu access permissions saved successfully!');
+    } catch (error) {
+      console.error('Failed to save permissions:', error);
+      alert('Failed to save permissions. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <h1 className="text-2xl font-bold text-gray-900">Role Wise Menu Access</h1>
+        </div>
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8">
+          <div className="flex items-center justify-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            <span className="ml-2 text-gray-500">Loading RBAC data...</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
   const renderMenuItem = (item: MenuItem, depth = 0) => {
     const permission = getPermissionForMenu(item.id);
     const isExpanded = expandedMenus.includes(item.id);
@@ -78,12 +139,12 @@ const RoleMenuAccess: React.FC = () => {
     return (
       <div key={item.id} className="border-b border-gray-100 last:border-b-0">
         <div className={`flex items-center py-3 ${depth > 0 ? 'pl-8' : ''}`}>
-          {hasChildren && (
-            <button 
+              className={`bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2 ${
+                !unsavedChanges || loading ? 'opacity-50 cursor-not-allowed' : ''
               onClick={() => toggleExpanded(item.id)}
               className="mr-2 text-gray-500 hover:text-gray-700"
             >
-              {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+              <span>{loading ? 'Saving...' : 'Save Changes'}</span>
             </button>
           )}
           
@@ -205,6 +266,12 @@ const RoleMenuAccess: React.FC = () => {
         <div className="px-6 py-4 border-b border-gray-200 bg-gray-50">
           <div className="flex justify-between items-center">
             <h3 className="text-lg font-medium text-gray-900">Menu Access Permissions</h3>
+            {loading && (
+              <div className="flex items-center space-x-2">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                <span className="text-sm text-gray-500">Saving...</span>
+              </div>
+            )}
             <div className="flex items-center space-x-2 text-sm">
               <span className="text-gray-600">Legend:</span>
               <span className="flex items-center">
