@@ -160,43 +160,43 @@ const RoleMenuAccess: React.FC = () => {
                   onChange={(e) => handlePermissionChange(item.id, 'canView', e.target.checked)}
                   className="mr-1 rounded"
                 />
-                <label htmlFor={\`view-${item.id}`} className="text-xs text-gray-600">View</label>
+                <label htmlFor={`view-${item.id}`} className="text-xs text-gray-600">View</label>
               </div>
               
               <div className="flex items-center">
                 <input
                   type="checkbox"
-                  id={\`create-${item.id}`}
+                  id={`create-${item.id}`}
                   checked={permission?.canCreate || false}
                   disabled={!permission?.canView}
                   onChange={(e) => handlePermissionChange(item.id, 'canCreate', e.target.checked)}
                   className="mr-1 rounded"
                 />
-                <label htmlFor={\`create-${item.id}`} className="text-xs text-gray-600">Create</label>
+                <label htmlFor={`create-${item.id}`} className="text-xs text-gray-600">Create</label>
               </div>
               
               <div className="flex items-center">
                 <input
                   type="checkbox"
-                  id={\`edit-${item.id}`}
+                  id={`edit-${item.id}`}
                   checked={permission?.canEdit || false}
                   disabled={!permission?.canView}
                   onChange={(e) => handlePermissionChange(item.id, 'canEdit', e.target.checked)}
                   className="mr-1 rounded"
                 />
-                <label htmlFor={\`edit-${item.id}`} className="text-xs text-gray-600">Edit</label>
+                <label htmlFor={`edit-${item.id}`} className="text-xs text-gray-600">Edit</label>
               </div>
               
               <div className="flex items-center">
                 <input
                   type="checkbox"
-                  id={\`delete-${item.id}`}
+                  id={`delete-${item.id}`}
                   checked={permission?.canDelete || false}
                   disabled={!permission?.canView}
                   onChange={(e) => handlePermissionChange(item.id, 'canDelete', e.target.checked)}
                   className="mr-1 rounded"
                 />
-                <label htmlFor={\`delete-${item.id}`} className="text-xs text-gray-600">Delete</label>
+                <label htmlFor={`delete-${item.id}`} className="text-xs text-gray-600">Delete</label>
               </div>
             </div>
           </div>
@@ -221,6 +221,7 @@ const RoleMenuAccess: React.FC = () => {
           className={`bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2 ${
             !unsavedChanges || loading ? 'opacity-50 cursor-not-allowed' : ''
           }`}
+        >
           <Save size={16} />
           <span>{loading ? 'Saving...' : 'Save Changes'}</span>
         </button>
