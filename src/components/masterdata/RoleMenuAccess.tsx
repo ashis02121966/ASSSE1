@@ -218,10 +218,9 @@ const RoleMenuAccess: React.FC = () => {
         <button
           onClick={handleSaveChanges}
           disabled={!unsavedChanges || loading}
-          className={\`bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2 ${
+          className={`bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors flex items-center space-x-2 ${
             !unsavedChanges || loading ? 'opacity-50 cursor-not-allowed' : ''
           }`}
-        >
           <Save size={16} />
           <span>{loading ? 'Saving...' : 'Save Changes'}</span>
         </button>
