@@ -1,4 +1,48 @@
-import { SurveyBlock, SurveySchedule, GridColumn } from '../types';
+export interface SurveyBlock {
+  id: string;
+  name: string;
+  description?: string;
+  fields: SurveyField[];
+  completed: boolean;
+  isGrid?: boolean;
+  gridColumns?: GridColumn[];
+  gridData?: GridRow[];
+}
+
+export interface SurveyField {
+  id: string;
+  label: string;
+  type: 'text' | 'number' | 'date' | 'select' | 'textarea';
+  value: any;
+  required: boolean;
+  validation?: string;
+  category?: string;
+  partA?: boolean;
+  partB?: boolean;
+  calculated?: boolean;
+  readOnly?: boolean;
+}
+
+export interface GridColumn {
+  id: string;
+  label: string;
+  type: 'text' | 'number' | 'date' | 'select';
+  required: boolean;
+}
+
+export interface GridRow {
+  [key: string]: any;
+}
+
+export interface SurveySchedule {
+  id: string;
+  name: string;
+  blocks: SurveyBlock[];
+  description?: string;
+  sector?: string;
+  year?: string;
+  isActive: boolean;
+}
 
 // Survey blocks based on the ASSSE Schedules document
 export const surveyBlocks: SurveyBlock[] = [

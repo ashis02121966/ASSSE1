@@ -169,10 +169,6 @@ export interface LoginCredentials {
   email: string;
   password: string;
 }
-
-  officeType?: OfficeType;
-  officeLocation?: string;
-  isActive: boolean;
 export interface Enterprise {
   id: string;
   name: string;
