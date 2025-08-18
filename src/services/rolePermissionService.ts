@@ -1,9 +1,16 @@
 import { supabase } from '../lib/supabase';
 import { RolePermission, MenuItem } from '../types';
+import { menuItems } from '../data/mockData';
 
 export class RolePermissionService {
   // Get all role permissions
   static async getRolePermissions(): Promise<RolePermission[]> {
+    // Check if Supabase is properly configured
+    if (!import.meta.env.VITE_SUPABASE_URL || import.meta.env.VITE_SUPABASE_URL.includes('placeholder')) {
+      // Return mock data when Supabase is not configured
+      return [];
+    }
+
     const { data, error } = await supabase
       .from('role_menu_permissions')
       .select(`
@@ -20,6 +27,11 @@ export class RolePermissionService {
 
   // Get permissions for a specific role
   static async getRolePermissionsByRole(roleId: string): Promise<RolePermission[]> {
+    // Check if Supabase is properly configured
+    if (!import.meta.env.VITE_SUPABASE_URL || import.meta.env.VITE_SUPABASE_URL.includes('placeholder')) {
+      return [];
+    }
+
     const { data, error } = await supabase
       .from('role_menu_permissions')
       .select('*')
@@ -32,6 +44,11 @@ export class RolePermissionService {
 
   // Update or create role permission
   static async upsertRolePermission(permission: Omit<RolePermission, 'id'>): Promise<RolePermission> {
+    // Check if Supabase is properly configured
+    if (!import.meta.env.VITE_SUPABASE_URL || import.meta.env.VITE_SUPABASE_URL.includes('placeholder')) {
+      throw new Error('Supabase not configured');
+    }
+
     const { data, error } = await supabase
       .from('role_menu_permissions')
       .upsert({
@@ -54,6 +71,11 @@ export class RolePermissionService {
 
   // Delete role permission
   static async deleteRolePermission(roleId: string, menuId: string): Promise<void> {
+    // Check if Supabase is properly configured
+    if (!import.meta.env.VITE_SUPABASE_URL || import.meta.env.VITE_SUPABASE_URL.includes('placeholder')) {
+      throw new Error('Supabase not configured');
+    }
+
     const { error } = await supabase
       .from('role_menu_permissions')
       .delete()
@@ -65,6 +87,12 @@ export class RolePermissionService {
 
   // Get filtered menu items for a user based on their roles
   static async getMenuItemsForUser(userId: string): Promise<MenuItem[]> {
+    // Check if Supabase is properly configured
+    if (!import.meta.env.VITE_SUPABASE_URL || import.meta.env.VITE_SUPABASE_URL.includes('placeholder')) {
+      // Return mock menu items when Supabase is not configured
+      return menuItems;
+    }
+
     // Get user's roles
     const { data: userRoles, error: rolesError } = await supabase
       .from('user_role_assignments')
@@ -112,6 +140,12 @@ export class RolePermissionService {
 
   // Get all menu items from database
   static async getAllMenuItems(): Promise<MenuItem[]> {
+    // Check if Supabase is properly configured
+    if (!import.meta.env.VITE_SUPABASE_URL || import.meta.env.VITE_SUPABASE_URL.includes('placeholder')) {
+      // Return mock menu items when Supabase is not configured
+      return menuItems;
+    }
+
     const { data, error } = await supabase
       .from('menu_items')
       .select('*')
