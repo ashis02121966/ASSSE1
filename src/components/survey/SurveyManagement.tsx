@@ -385,9 +385,13 @@ const SurveyManagement: React.FC = () => {
         </div>
 
         {/* Navigation Buttons */}
-        <div className="flex justify-between items-center">
+        <div className="flex justify-between items-center mb-6">
           <button
-            onClick={handlePreviousBlock}
+            onClick={() => {
+              if (currentBlock > 0) {
+                setCurrentBlock(currentBlock - 1);
+              }
+            }}
             disabled={currentBlock === 0}
             className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
           >
@@ -409,7 +413,7 @@ const SurveyManagement: React.FC = () => {
               Save as Draft
             </button>
             
-            {currentBlock === surveyBlocks.length - 1 ? (
+            {currentBlock === getSurveyBlocks().length - 1 ? (
               <button
                 onClick={handleSubmitSurvey}
                 className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
@@ -418,7 +422,12 @@ const SurveyManagement: React.FC = () => {
               </button>
             ) : (
               <button
-                onClick={handleNextBlock}
+                onClick={() => {
+                  const surveyBlocks = getSurveyBlocks();
+                  if (currentBlock < surveyBlocks.length - 1) {
+                    setCurrentBlock(currentBlock + 1);
+                  }
+                }}
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
               >
                 Next Block

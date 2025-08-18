@@ -577,9 +577,13 @@ const ScrutinyManagement: React.FC = () => {
         </div>
 
         {/* Navigation Buttons */}
-        <div className="flex justify-between items-center mb-6">
+        <div className="flex justify-between items-center">
           <button
-            onClick={handlePreviousBlock}
+            onClick={() => {
+              if (currentBlock > 0) {
+                setCurrentBlock(currentBlock - 1);
+              }
+            }}
             disabled={currentBlock === 0}
             className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
           >
@@ -587,7 +591,7 @@ const ScrutinyManagement: React.FC = () => {
           </button>
           
           <div className="flex space-x-3">
-            {currentBlock === surveyBlocks.length - 1 ? (
+            {currentBlock === getSurveyBlocks().length - 1 ? (
               <button
                 onClick={handleFinalApproval}
                 className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
@@ -596,7 +600,12 @@ const ScrutinyManagement: React.FC = () => {
               </button>
             ) : (
               <button
-                onClick={handleNextBlock}
+                onClick={() => {
+                  const surveyBlocks = getSurveyBlocks();
+                  if (currentBlock < surveyBlocks.length - 1) {
+                    setCurrentBlock(currentBlock + 1);
+                  }
+                }}
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
               >
                 Next Block

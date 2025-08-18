@@ -158,7 +158,7 @@ const FrameAllocation: React.FC = () => {
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">{frame.dslNumber}</div>
+                        <div className="text-sm text-gray-900">{frame.dslNumber || 'N/A'}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm text-gray-900">{frame.enterprises.toLocaleString()}</div>
